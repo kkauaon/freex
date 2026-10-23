@@ -1,6 +1,6 @@
 # ADR-005: Monólito modular com serviços stateful separados
 
-- **Status:** Aceito
+- **Status:** Aceito (parcialmente substituído por [ADR-006](ADR-006-api-fastify.md): a API REST e a autenticação saem de `apps/web` para `apps/api`)
 - **Data:** 2026-10-23
 - **Substitui:** —
 - **Substituído por:** —

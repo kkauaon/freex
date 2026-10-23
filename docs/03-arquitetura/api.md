@@ -25,7 +25,9 @@
 - Sessão armazenada no banco; token opaco, hash no servidor.
 - Expiração deslizante de 30 dias; absoluta de 90 dias.
 - Logout invalida a sessão no servidor.
-- Implementação com Better Auth executado no servidor, atrás dos endpoints `/v1/auth/*`; o contrato público, o cookie e os controles desta seção são mantidos pela camada de API.
+- Implementação com Better Auth executado em `apps/api` (Fastify, [ADR-006](adr/ADR-006-api-fastify.md)), atrás dos endpoints `/v1/auth/*`; o contrato público, o cookie e os controles desta seção são mantidos pela camada de API.
+- `apps/web` e `apps/api` DEVEM ficar no mesmo site (mesmo domínio registrável, por exemplo `freex.app` e `api.freex.app`). O cookie `SameSite=Lax` não é enviado entre sites distintos.
+- O navegador chama a API com `credentials: 'include'`; o SSR repassa o cookie da requisição recebida.
 
 ### 2.2 OAuth
 
@@ -44,6 +46,7 @@
 ### 2.4 CSRF
 
 - Requisições mutáveis exigem `Origin` permitido.
+- CORS na API aceita apenas a origem do web app, com `credentials`; sem curinga.
 - Cookie `SameSite=Lax` reduz o risco.
 - Endpoints sensíveis exigem header `X-CSRF-Token` obtido em `GET /v1/me`.
 - WebSocket valida `Origin`.

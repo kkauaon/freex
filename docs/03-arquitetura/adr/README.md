@@ -10,7 +10,8 @@ Registro das decisões que moldam o FREEX e que seriam caras de reverter. Um ADR
 | [ADR-002](ADR-002-editor-prosemirror.md) | Editor estruturado com ProseMirror | Aceito | 2026-10-23 |
 | [ADR-003](ADR-003-pdf-chromium.md) | PDF a partir de HTML pré-paginado no Chromium | Aceito | 2026-10-23 |
 | [ADR-004](ADR-004-paper-letter.md) | US Letter como perfil canônico | Aceito | 2026-10-23 |
-| [ADR-005](ADR-005-monolito-modular.md) | Monólito modular com serviços stateful separados | Aceito | 2026-10-23 |
+| [ADR-005](ADR-005-monolito-modular.md) | Monólito modular com serviços stateful separados | Aceito (parcialmente substituído pelo ADR-006) | 2026-10-23 |
+| [ADR-006](ADR-006-api-fastify.md) | API REST em serviço Fastify separado | Aceito | 2026-10-23 |
 
 ## 2. Regras
 

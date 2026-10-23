@@ -1,0 +1,25 @@
+{
+  "name": "@freex/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.0",
+    "@freex/contracts": "workspace:*",
+    "@freex/layout": "workspace:*",
+    "@freex/pdf": "workspace:*",
+    "@freex/screenplay": "workspace:*",
+    "fastify": "^5.0.0",
+    "fastify-type-provider-zod": "^4.0.2",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

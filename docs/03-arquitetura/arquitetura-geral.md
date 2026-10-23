@@ -30,7 +30,7 @@ Definir a arquitetura do FREEX de forma que:
 
 | Camada | Escolha | Motivo |
 |---|---|---|
-| Runtime | Node.js 22 LTS | Ecossistema, suporte, estabilidade |
+| Runtime | Node.js 24 LTS | Ecossistema, suporte, estabilidade |
 | Gerenciador | pnpm + Turborepo | Monorepo rápido, cache de tarefas |
 | Frontend | Next.js 15 (App Router), React 19 | SSR, rotas, integração com API |
 | Entrega | Web responsiva + PWA | Instalação e shell offline em desktop e mobile, sem app nativo |
@@ -38,12 +38,12 @@ Definir a arquitetura do FREEX de forma que:
 | Editor | ProseMirror + `y-prosemirror` | Schema customizado, controle de transações, CRDT |
 | CRDT | Yjs | Convergência, offline, maturidade |
 | WebSocket | Hocuspocus | Servidor Yjs, autenticação, extensões |
-| API | Next.js Route Handlers | Menos infraestrutura no MVP; extraível depois |
+| API | Fastify 5 em `apps/api` (ADR-006) | Baixo overhead, schemas Zod, Pino nativo, deploy independente |
 | Banco | PostgreSQL 16 | Transações, JSONB, integridade relacional |
 | ORM | Drizzle ORM | SQL explícito, migrações versionadas |
 | Cache/fila | Redis 7 + BullMQ | Pub/sub, rate limit, jobs |
 | Storage | S3-compatível (R2/S3) | PDFs, avatares, exports |
-| Auth | Better Auth com schema próprio e integração Drizzle | E-mail/senha, OAuth, cookies e integração com Next |
+| Auth | Better Auth com schema próprio e integração Drizzle | E-mail/senha, OAuth, cookies; integrado ao Fastify |
 | UI | Tailwind CSS + Radix UI | Acessibilidade, consistência |
 | Validação | Zod | Contratos em runtime e tipos |
 | PDF | Playwright + Chromium fixado | Fidelidade visual, fonte incorporada |
@@ -79,7 +79,7 @@ flowchart TB
 
   subgraph App["FREEX"]
     WEB[ Web app<br/>Next.js ]
-    API[ API REST<br/>Route Handlers ]
+    API[ API REST<br/>Fastify ]
     COL[ Serviço de colaboração<br/>Hocuspocus ]
     WRK[ Worker de exportação<br/>BullMQ + Playwright ]
     DB[( PostgreSQL )]
@@ -106,12 +106,19 @@ flowchart TB
 ### 5.1 Web app
 
 - Renderiza a interface.
-- Faz autenticação e sessão com Better Auth, atrás dos endpoints públicos `/v1/auth/*`; o contrato REST não expõe os endpoints nativos da biblioteca.
-- Serve a API REST.
+- Consome a API REST por HTTP; não acessa o banco.
 - Serve o shell PWA e o editor; em telas estreitas, a edição usa o modo linear e a prévia paginada consome o mesmo layout do PDF.
 - O service worker cacheia apenas shell, assets estáticos e fonte. Conteúdo de roteiro fica no IndexedDB por usuário; respostas autenticadas de API e PDF não entram no cache.
 - Não guarda estado de documento em memória.
 - Pode ser replicada horizontalmente sem sticky session.
+
+### 5.1.1 API (`apps/api`)
+
+- Serve a API REST `/v1/*` com Fastify, conforme o [ADR-006](adr/ADR-006-api-fastify.md).
+- Faz autenticação e sessão com Better Auth, atrás dos endpoints públicos `/v1/auth/*`; o contrato REST não expõe os endpoints nativos da biblioteca.
+- Valida toda entrada e saída com Zod e verifica permissão no servidor.
+- Enfileira jobs de exportação; nunca renderiza PDF na requisição.
+- Stateless; pode ser replicada horizontalmente sem sticky session.
 
 ### 5.2 Serviço de colaboração
 
@@ -156,7 +163,8 @@ flowchart TB
 
 ```text
 apps/
-  web/          Next.js: UI, API, auth
+  web/          Next.js: UI e shell PWA
+  api/          Fastify: API REST, auth
   collab/       Hocuspocus
   worker/       BullMQ + PDF
 
@@ -268,12 +276,13 @@ A edição é eventualmente consistente por natureza. O usuário pode ver uma ed
 
 ## 9. Escala
 
-### 9.1 Web
+### 9.1 Web e API
 
-- Stateless; escala horizontal.
+- `apps/web` e `apps/api` são stateless e escalam horizontalmente e de forma independente.
 - Sessão em cookie; nenhum estado local obrigatório.
 - CDN para assets estáticos.
 - Rate limit no edge e na API.
+- O pool de conexões do PostgreSQL é dimensionado por instância de `apps/api`.
 
 ### 9.2 Colaboração
 
@@ -320,7 +329,7 @@ Nenhuma falha de componente pode resultar em perda silenciosa de texto. Se o sis
 
 - WAF/CDN na frente de web e API.
 - TLS 1.3.
-- CORS restrito ao domínio da aplicação.
+- CORS restrito à origem do web app, sem curinga, com `credentials`.
 - CSP estrita.
 - Rate limit por IP, sessão e conta.
 - WebSocket com origem verificada e token de curta duração.

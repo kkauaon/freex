@@ -55,7 +55,8 @@ Regras:
 
 | Unidade | Tipo | Escala | Observação |
 |---|---|---|---|
-| `web` | Container stateless | Horizontal | Next.js, API e interface |
+| `web` | Container stateless | Horizontal | Next.js e interface |
+| `api` | Container stateless | Horizontal | Fastify, API REST e auth |
 | `collab` | Container stateful | Horizontal com Redis | Uma sala por roteiro; sticky não obrigatório |
 | `worker` | Container efêmero | Horizontal | Chromium fixado; concorrência por memória |
 | PostgreSQL | Serviço gerenciado | Vertical e réplica | PITR e backup diário |

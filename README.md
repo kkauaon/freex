@@ -79,7 +79,7 @@ Uma ressalva importante: não existe uma norma ISO de roteiro. O "padrão da ind
 ```mermaid
 flowchart LR
   U[Usuário] --> W[Web app<br/>Next.js + React + PWA]
-  W --> A[API REST<br/>Next.js Route Handlers]
+  W --> A[API REST<br/>Fastify]
   W <--> C[Serviço de colaboração<br/>Hocuspocus + Yjs]
   A --> P[(PostgreSQL)]
   A --> R[(Redis)]

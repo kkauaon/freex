@@ -4,9 +4,9 @@ Instruções para agentes e pessoas que trabalharem neste repositório.
 
 ## 1. Estado atual
 
-O repositório está na **fase 0**: documentação e decisões. Não existe aplicação executável, scaffold, `package.json` ou suíte de testes. Nada aqui deve ser tratado como instalação pronta.
+O repositório está na **fase 1 (fundação mínima)**. Existe um scaffold funcional (`pnpm install`, `pnpm typecheck`, `pnpm test`) com `packages/screenplay`, `packages/layout` (paginador parcial: sem regras de órfã/viúva, `(MORE)` e `(CONT'D)`), `packages/contracts`, `packages/pdf` (HTML pré-paginado + Chromium via Playwright, Courier Prime embutida), `apps/api` (Fastify: `/v1/health`, `/v1/layout/paginate` e `/v1/export/pdf` síncrono, sem auth nem banco) e `apps/web` (Next.js com editor de texto simples e prévia). Não existem ainda: banco, auth, colaboração, worker/PDF, ESLint, CI, `pnpm dev` validado, `lint`, `test:e2e`, `test:pdf` e `db:migrate`.
 
-Enquanto o código não existir:
+Regras para o que ainda não existe:
 
 - não invente comandos, endpoints ou variáveis de ambiente como se já funcionassem;
 - não crie código de produção sem uma tarefa explícita;
@@ -99,9 +99,10 @@ Mudança de constante sem golden test e sem versão de perfil é regressão, nã
 
 | Camada | Escolha |
 |---|---|
-| Runtime | Node.js 22 LTS |
+| Runtime | Node.js 24 LTS |
 | Monorepo | pnpm + Turborepo |
 | Frontend | Next.js 15 (App Router), React 19 |
+| API | Fastify 5 (ADR-006) |
 | Entrega | Web responsiva + PWA, com modo mobile de edição |
 | Linguagem | TypeScript estrito |
 | Editor | ProseMirror + `y-prosemirror` |
@@ -121,7 +122,8 @@ Estrutura planejada:
 
 ```text
 apps/
-  web/          Next.js: UI, API, auth
+  web/          Next.js: UI e shell PWA
+  api/          Fastify: API REST, auth
   collab/       Hocuspocus
   worker/       BullMQ + PDF
 packages/
@@ -142,7 +144,8 @@ Regras de dependência:
 - `screenplay` não depende de app, banco ou UI.
 - `layout` depende apenas de `screenplay`.
 - `pdf` depende de `layout` e `screenplay`.
-- `apps/web` depende de `contracts`, `db`, `auth`, `ui`, `screenplay` e `layout`.
+- `apps/web` depende de `contracts`, `ui`, `screenplay` e `layout`; não acessa banco nem auth diretamente.
+- `apps/api` depende de `contracts`, `db`, `auth`, `screenplay`, `layout` e `observability`. Atalho temporário da fundação: também depende de `pdf`, até `apps/worker` existir.
 - `apps/collab` depende de `screenplay`, `db`, `auth` e `observability`.
 - `apps/worker` depende de `pdf`, `db` e `observability`.
 - Nenhum pacote de domínio importa código de `apps/`.
@@ -154,12 +157,12 @@ Regras de dependência:
 
 | Comando | Finalidade | Status |
 |---|---|---|
-| `pnpm install` | Instalar dependências | Planejado |
+| `pnpm install` | Instalar dependências | Funcional |
 | `pnpm dev` | Subir web, collab e worker em modo local | Planejado |
 | `pnpm build` | Build de produção | Planejado |
 | `pnpm lint` | Lint e formatação | Planejado |
-| `pnpm typecheck` | TypeScript estrito | Planejado |
-| `pnpm test` | Unidade e integração | Planejado |
+| `pnpm typecheck` | TypeScript estrito | Funcional |
+| `pnpm test` | Unidade e integração | Funcional (screenplay, layout, pdf, api) |
 | `pnpm test:e2e` | Playwright | Planejado |
 | `pnpm test:pdf` | Golden PDFs e paridade | Planejado |
 | `pnpm db:migrate` | Migrações Drizzle | Planejado |

@@ -316,6 +316,7 @@ A retenção detalhada está em [`modelo-de-dados.md`](modelo-de-dados.md).
 ### 9.3 Sessão e CSRF
 
 - `SameSite=Lax` e verificação de `Origin` em métodos mutáveis.
+- `apps/web` e `apps/api` ficam no mesmo site; CORS da API aceita só a origem do web app, sem curinga ([ADR-006](adr/ADR-006-api-fastify.md)).
 - Token CSRF em ações sensíveis, vinculado à sessão.
 - Nenhuma operação mutável por GET.
 - Logout por POST.
