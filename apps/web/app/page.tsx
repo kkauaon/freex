@@ -384,7 +384,6 @@ export default function Home() {
                     setScriptPages(pages);
                   }}
                   onState={setUi}
-                  onNotice={(text) => inform(text, true)}
                   onOpenCover={() => openSide('cover')}
                 />
               ) : (

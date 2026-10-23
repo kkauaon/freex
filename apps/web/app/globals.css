@@ -679,11 +679,20 @@ select {
 .script-editor [data-element='dialogue']::before { content: 'Diálogo'; }
 
 /* empty blocks hint what to write; a float keeps the caret in place */
+/* An empty block ends in a <br>, and ::after comes after it, on the next line: the hint is
+   taken out of the flow and put on the block's own line instead. */
 .script-editor p:has(> br.ProseMirror-trailingBreak:only-child)::after {
-  float: left;
-  height: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
   color: #8a8a93;
   pointer-events: none;
+}
+
+.script-editor [data-element='transition']:has(> br:only-child)::after {
+  left: auto;
+  right: 0;
 }
 
 .script-editor [data-element='scene-heading']:has(> br:only-child)::after { content: 'INT. LOCAL - DIA'; }

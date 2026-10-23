@@ -20,7 +20,6 @@ import {
   type TitlePage,
 } from '@freex/screenplay';
 import {
-  NOTICE_META,
   backspace,
   deleteForward,
   enter,
@@ -68,7 +67,6 @@ interface Props {
   /** Called a moment after the text stops changing, and right after `load`, with the layout. */
   onBlocks(blocks: Block[], pages: Page[]): void;
   onState(state: EditorUiState): void;
-  onNotice(message: string): void;
   onOpenCover(): void;
 }
 
@@ -145,15 +143,15 @@ function buildState(blocks: Block[], onPlainPaste: Plugin): EditorState {
 }
 
 export const ScriptEditor = forwardRef<ScriptEditorApi, Props>(function ScriptEditor(
-  { initialBlocks, titlePage, onBlocks, onState, onNotice, onOpenCover },
+  { initialBlocks, titlePage, onBlocks, onState, onOpenCover },
   ref,
 ) {
   const wrap = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   // callbacks change on every render; the view is created once and reads the latest
-  const callbacks = useRef({ onBlocks, onState, onNotice, onOpenCover });
-  callbacks.current = { onBlocks, onState, onNotice, onOpenCover };
+  const callbacks = useRef({ onBlocks, onState, onOpenCover });
+  callbacks.current = { onBlocks, onState, onOpenCover };
   const cover = useRef(titlePage);
   cover.current = titlePage;
   const layout = useRef<Page[]>([]);
@@ -233,8 +231,6 @@ export const ScriptEditor = forwardRef<ScriptEditorApi, Props>(function ScriptEd
       dispatchTransaction(tr) {
         const next = v.state.apply(tr);
         v.updateState(next);
-        const notice = tr.getMeta(NOTICE_META) as string | undefined;
-        if (notice) callbacks.current.onNotice(notice);
         if (tr.docChanged) {
           window.clearTimeout(timer);
           timer = window.setTimeout(() => emitBlocks(v), BLOCKS_DELAY_MS);

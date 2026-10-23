@@ -10,7 +10,6 @@ import {
   type ElementType,
 } from '@freex/screenplay';
 import {
-  NOTICE_META,
   backspace,
   deleteForward,
   enter,
@@ -34,15 +33,12 @@ interface Result {
   blocks: Block[];
   index: number;
   offset: number;
-  notice: string | undefined;
   handled: boolean;
 }
 
 function run(cmd: Command, state: EditorState): Result {
   let next = state;
-  let notice: string | undefined;
   const handled = cmd(state, (tr) => {
-    notice = tr.getMeta(NOTICE_META) as string | undefined;
     next = state.apply(tr);
   });
   return {
@@ -50,7 +46,6 @@ function run(cmd: Command, state: EditorState): Result {
     blocks: documentToBlocks(nodeToScriptDocument(next.doc)),
     index: selectionInfo(next).blockIndex,
     offset: next.selection.$from.parentOffset,
-    notice,
     handled,
   };
 }
@@ -115,17 +110,11 @@ describe('Enter (ux-e-interface.md 5.2)', () => {
     ]);
   });
 
-  it('turns an upper-case action line into a character cue and says so', () => {
-    const r = run(enter, stateFor([B('action', 'ANA')], 0, 3));
-    expect(r.blocks).toEqual([B('character', 'ANA'), B('dialogue', '')]);
-    expect(r.notice).toMatch(/personagem/);
-    expect(r.index).toBe(1);
-  });
-
-  it('does not treat headings, transitions or sentences as cues', () => {
-    for (const text of ['INT. SALA - DIA', 'CUT TO:', 'ELA CORRE.', 'ANA ENTRA NA SALA E SE SENTA']) {
+  it('never converts a line by guessing: an upper-case action stays an action', () => {
+    for (const text of ['ANA', 'MARIA (V.O.)', 'INT. SALA - DIA', 'CUT TO:', 'ELA CORRE.']) {
       const r = run(enter, stateFor([B('action', text)], 0, text.length));
-      expect(types(r.blocks)).toEqual(['action', 'action']);
+      expect(r.blocks).toEqual([B('action', text), B('action', '')]);
+      expect(r.index).toBe(1);
     }
   });
 
@@ -146,19 +135,68 @@ describe('Enter (ux-e-interface.md 5.2)', () => {
 });
 
 describe('Tab and Shift+Tab', () => {
-  it('follow the table of ux-e-interface.md 5.2', () => {
-    const dlg = () => stateFor([B('character', 'ANA'), B('dialogue', 'Oi.')], 1, 0);
-    expect(selectionInfo(run(tab(false), dlg()).state).element).toBe('character');
-    // a parenthetical must be followed by a dialogue, which the engine adds
-    expect(run(tab(true), dlg()).blocks.map((b) => b.type)).toEqual(['character', 'parenthetical', 'dialogue']);
-    expect(types(run(tab(false), stateFor([B('scene-heading', 'INT. A - DIA')], 0, 0)).blocks)).toEqual(['action']);
-    expect(types(run(tab(true), stateFor([B('scene-heading', 'INT. A - DIA')], 0, 0)).blocks)).toEqual(['transition']);
-    expect(types(run(tab(false), stateFor([B('action', 'x')], 0, 0)).blocks)).toEqual(['scene-heading']);
+  const walk = (shift: boolean, from: Block[], count: number) => {
+    let state = stateFor(from, 0, 0);
+    const seen = [selectionInfo(state).element];
+    for (let i = 0; i < count; i++) {
+      state = run(tab(shift), state).state;
+      seen.push(selectionInfo(state).element);
+    }
+    return { seen, blocks: documentToBlocks(nodeToScriptDocument(state.doc)) };
+  };
+
+  it('Tab walks every element in order and wraps around', () => {
+    const { seen } = walk(false, [B('action', 'x')], 7);
+    expect(seen).toEqual([
+      'action',
+      'character',
+      'parenthetical',
+      'dialogue',
+      'transition',
+      'shot',
+      'scene-heading',
+      'action',
+    ]);
+  });
+
+  it('Shift+Tab walks the same elements backwards', () => {
+    const { seen } = walk(true, [B('action', 'x')], 7);
+    expect(seen).toEqual([
+      'action',
+      'scene-heading',
+      'shot',
+      'transition',
+      'dialogue',
+      'parenthetical',
+      'character',
+      'action',
+    ]);
+  });
+
+  it('a full lap leaves no empty blocks behind', () => {
+    for (const shift of [false, true]) {
+      const { blocks } = walk(shift, [B('action', 'x')], 7);
+      expect(blocks).toEqual([B('action', 'X')]);
+    }
+    // and in the middle of a script the neighbours are untouched
+    const around = [B('action', 'antes'), B('action', 'meio'), B('action', 'depois')];
+    let state = stateFor(around, 1, 0);
+    for (let i = 0; i < 7; i++) state = run(tab(false), state).state;
+    expect(documentToBlocks(nodeToScriptDocument(state.doc)).map((b) => b.text)).toEqual(['antes', 'MEIO', 'depois']);
+  });
+
+  it('keeps a real dialogue line that follows the block being converted', () => {
+    const base = [B('character', 'ANA'), B('dialogue', 'Oi.')];
+    // Tab on the cue turns it into a parenthetical; the dialogue is not lost
+    const r = run(tab(false), stateFor(base, 0, 0));
+    expect(r.blocks.some((b) => b.type === 'dialogue' && b.text === 'Oi.')).toBe(true);
   });
 
   it('entering an upper-case element upper-cases the text; a parenthetical gets parentheses', () => {
-    const t = run(tab(false), stateFor([B('action', 'cut to:')], 0, 0));
+    const t = run(setElement('scene-heading'), stateFor([B('action', 'cut to:')], 0, 0));
     expect(t.blocks[0]).toEqual(B('scene-heading', 'CUT TO:'));
+    const c = run(tab(false), stateFor([B('action', 'ana')], 0, 0));
+    expect(c.blocks[0]).toEqual(B('character', 'ANA'));
     const p = run(
       setElement('parenthetical'),
       stateFor([B('character', 'ANA'), B('dialogue', 'baixo')], 1, 2),

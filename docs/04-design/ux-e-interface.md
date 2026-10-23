@@ -217,29 +217,39 @@ Atalhos usam `Ctrl` no Windows e Linux, `Cmd` no macOS. A paleta de comandos mos
 
 ### 5.2 Máquina de estados dos elementos
 
-| Elemento atual | `Enter` | `Enter` em elemento vazio | `Tab` | `Shift+Tab` |
-|---|---|---|---|---|
-| Cabeçalho de cena | Ação | Ação | Ação | Transição |
-| Ação | Ação | Cabeçalho de cena | Cabeçalho de cena | Cabeçalho de cena |
-| Personagem | Diálogo | Ação | Diálogo | Ação |
-| Parêntese | Diálogo | Diálogo | Diálogo | Personagem |
-| Diálogo | Ação | Personagem | Personagem | Parêntese |
-| Transição | Cabeçalho de cena | Cabeçalho de cena | Cabeçalho de cena | Ação |
-| Plano | Ação | Cabeçalho de cena | Ação | Cabeçalho de cena |
-| Diálogo duplo | Ação | Ação | Ação | Ação |
+`Enter` cria o próximo elemento conforme a tabela. `Tab` e `Shift+Tab` percorrem **todos** os elementos, na ordem da barra de elementos, e voltam ao início ao chegar ao fim:
+
+```text
+Cabeçalho de cena → Ação → Personagem → Parêntese → Diálogo → Transição → Plano → (Cabeçalho de cena)
+```
+
+`Shift+Tab` percorre a mesma ordem ao contrário. Dentro de um diálogo duplo, `Tab` alterna as colunas antes de sair do bloco (ver abaixo).
+
+| Elemento atual | `Enter` | `Enter` em elemento vazio |
+|---|---|---|
+| Cabeçalho de cena | Ação | Ação |
+| Ação | Ação | Cabeçalho de cena |
+| Personagem | Diálogo | Ação |
+| Parêntese | Diálogo | Diálogo |
+| Diálogo | Ação | Personagem |
+| Transição | Cabeçalho de cena | Cabeçalho de cena |
+| Plano | Ação | Cabeçalho de cena |
+| Diálogo duplo | Ação | Ação |
+
+Ao trocar o elemento o texto segue a regra do novo elemento (maiúsculas em cena, personagem e transição; parênteses no parêntese) e os blocos vazios que uma troca anterior deixou para manter a fala válida são removidos, de modo que percorrer todos os elementos não acumula blocos vazios.
 
 Regras adicionais:
 
 - `Tab` dentro de um diálogo duplo alterna entre as duas colunas antes de sair do bloco.
 - `Enter` em um diálogo duplo cria uma nova linha na coluna ativa; `Ctrl/Cmd+Enter` insere um cabeçalho de cena após o bloco e sai do diálogo duplo.
-- Digitar um nome em maiúsculas seguidas de `Enter` no início de uma linha de ação pode converter para personagem, mas a conversão só ocorre com confirmação visual e desfazer disponível. A regra exata fica em [`../02-roteiro/elementos-e-convencoes.md`](../02-roteiro/elementos-e-convencoes.md).
+- O editor não converte uma linha em outro elemento por palpite: um nome em maiúsculas digitado como ação continua ação. O autor escolhe o elemento pela barra de elementos, por `Tab` ou por `Alt+Shift+3`. (A conversão automática de que o texto anterior falava era opcional e foi desativada por decisão de produto.)
 - Nenhuma tecla cria uma quebra de página manual. A paginação é consequência do conteúdo.
 
 **Implementação** (`apps/web/app/editor/commands.ts`, testada sem navegador, inclusive com sequências aleatórias de teclas que exigem documento válido):
 
+- `Tab` e `Shift+Tab` percorrem os sete elementos (`nextOnTab` e `nextOnShiftTab` em `packages/screenplay/src/elements.ts`); a tabela de contexto que havia antes só alternava pares de elementos e não atendia o critério de aceite 3.
 - `Enter` no meio do texto divide o bloco; a segunda metade mantém o tipo em ação e diálogo e ganha o tipo seguinte da tabela nos demais. Em personagem ou parêntese que já tem a linha seguinte, o cursor passa para ela em vez de criar outra.
 - Um parêntese guarda os parênteses no texto. O cursor fica dentro deles e o `)` conta como fim do conteúdo.
-- A conversão de uma linha de ação toda em maiúsculas (até 22 caracteres, sem pontuação final, que não seja cabeçalho, transição nem plano) em personagem acontece no `Enter` e mostra um aviso com **Desfazer**.
 - `Backspace` no início de um bloco: bloco vazio some e o cursor sobe; bloco de outro elemento volta a ação; ação (ou bloco do mesmo elemento) junta com o de cima. `Delete` no fim puxa o bloco seguinte.
 - `Alt+Shift+1…7` escolhe o elemento (cena, ação, personagem, parêntese, diálogo, transição, plano). A barra de elementos faz o mesmo e é o caminho no celular. Os botões não tiram o foco do roteiro.
 - Estrutura (fala, diálogo duplo) é mantida por reconstrução do trecho com o motor (`normalizeBlocks` e `blocksToDocument`): converter um bloco nunca deixa o documento fora do esquema; um diálogo sem personagem ganha um personagem vazio, e um personagem sem diálogo, um diálogo vazio.

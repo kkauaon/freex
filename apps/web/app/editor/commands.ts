@@ -7,29 +7,20 @@ import {
   type Transaction,
 } from 'prosemirror-state';
 import {
-  MAX_CHARACTER_CUE_LENGTH,
   UPPERCASE_ELEMENTS,
   blocksToDocument,
-  classifyTransition,
   documentToBlocks,
-  isShotLine,
-  isSceneHeading,
-  isUpperCase,
   nextOnEnter,
   nextOnShiftTab,
   nextOnTab,
   normalizeBlocks,
   normalizeMarks,
-  parseCharacterCue,
   parseFountain,
   scriptSchema,
   type Block,
   type ElementType,
   type Mark,
 } from '@freex/screenplay';
-
-/** Transaction meta key carrying a short message for the user (e.g. an automatic conversion). */
-export const NOTICE_META = 'freex:notice';
 
 const SPEECH: ReadonlySet<ElementType> = new Set(['character', 'parenthetical', 'dialogue']);
 
@@ -60,7 +51,6 @@ interface Edit {
   readonly blocks: Block[];
   readonly anchor: Caret;
   readonly head: Caret;
-  readonly notice?: string;
 }
 
 interface Context {
@@ -153,7 +143,6 @@ function runEdit(
     return t ? t.pos + 1 + Math.min(c.offset, t.node.content.size) : start + 1;
   };
   tr.setSelection(TextSelection.create(tr.doc, pos(edit.anchor), pos(edit.head)));
-  if (edit.notice) tr.setMeta(NOTICE_META, edit.notice);
   dispatch(tr.scrollIntoView());
   return true;
 }
@@ -234,6 +223,24 @@ function convert(b: Block, type: ElementType, force = false): { block: Block; sh
   return { block: build(next, text, marks), shift };
 }
 
+/**
+ * Removes the empty cue, parenthetical and dialogue blocks that touch `index`: shells that an
+ * earlier conversion needed to keep a speech valid. Without this, walking an element through
+ * the speech elements with Tab would leave a trail of empty blocks behind it.
+ * Returns the blocks and where `index` ended up.
+ */
+function dropEmptyShells(blocks: readonly Block[], index: number): { blocks: Block[]; index: number } {
+  const isShell = (b: Block | undefined) => !!b && SPEECH.has(b.type) && isEmptyBlock(b);
+  let lo = index;
+  let hi = index;
+  while (isShell(blocks[lo - 1])) lo--;
+  while (isShell(blocks[hi + 1])) hi++;
+  return {
+    blocks: blocks.filter((_, i) => i < lo || i > hi || i === index),
+    index: index - (index - lo),
+  };
+}
+
 function caretFor(type: ElementType, text: string, offset: number): number {
   // inside the parentheses of a parenthetical
   if (type === 'parenthetical') return Math.max(1, Math.min(offset, text.length - 1));
@@ -247,14 +254,6 @@ function isInDual(blocks: readonly Block[], index: number): boolean {
     if (b && !SPEECH.has(b.type)) return false;
   }
   return false;
-}
-
-/** An upper-case line that reads as a character cue (elementos-e-convencoes.md 4.2). */
-function looksLikeCue(text: string): boolean {
-  const t = text.trim();
-  if (t === '' || t.length > MAX_CHARACTER_CUE_LENGTH || /[.:!?]$/.test(t)) return false;
-  if (isSceneHeading(t) || classifyTransition(t) !== null || isShotLine(t)) return false;
-  return isUpperCase(parseCharacterCue(t).name) && parseCharacterCue(t).name === t.replace(/\s*(\([^()]*\)\s*)+$/, '');
 }
 
 // ------------------------------------------------------------------ commands
@@ -302,17 +301,6 @@ export const enter: Command = (state, dispatch, view) => {
       return { blocks: replaceAt(blocks, k, confirm(b)), anchor: caret, head: caret };
     }
 
-    if (b.type === 'action' && atEnd && !dual && looksLikeCue(before.text)) {
-      const cue = confirm({ ...before, type: 'character' });
-      const caret = { index: k + 1, offset: 0 };
-      return {
-        blocks: replaceAt(blocks, k, cue, { type: 'dialogue', text: '' }),
-        anchor: caret,
-        head: caret,
-        notice: 'Linha convertida em personagem. Desfaça com Ctrl+Z se não era um nome.',
-      };
-    }
-
     let nextType = nextOnEnter(b.type, false);
     if (!atEnd && (b.type === 'action' || b.type === 'dialogue')) nextType = b.type;
     if (dual) nextType = 'dialogue';
@@ -333,7 +321,7 @@ export function setElement(type: ElementType): Command {
     return runEdit(state, dispatch, ({ blocks, anchor, head }) => {
       const lo = Math.min(anchor.index, head.index);
       const hi = Math.max(anchor.index, head.index);
-      const out = [...blocks];
+      let out = [...blocks];
       const carets = new Map<number, Caret>();
       for (let i = lo; i <= hi; i++) {
         const b = out[i];
@@ -345,6 +333,13 @@ export function setElement(type: ElementType): Command {
         }
       }
       const fix = (c: Caret) => carets.get(c.index) ?? c;
+      if (lo === hi) {
+        // one block: leave no empty speech shells behind, as with Tab
+        const tidy = dropEmptyShells(out, lo);
+        out = tidy.blocks;
+        const caret = { index: tidy.index, offset: fix(head).offset };
+        return { blocks: out, anchor: caret, head: caret };
+      }
       return { blocks: out, anchor: fix(anchor), head: fix(head) };
     });
   };
@@ -400,11 +395,12 @@ export function tab(shift: boolean): Command {
       if (!b) return null;
       const target = shift ? nextOnShiftTab(b.type) : nextOnTab(b.type);
       const { block, shift: moved } = convert(b, target);
+      const tidy = dropEmptyShells(replaceAt(blocks, head.index, block), head.index);
       const caret = {
-        index: head.index,
+        index: tidy.index,
         offset: caretFor(target, block.text, head.offset + moved),
       };
-      return { blocks: replaceAt(blocks, head.index, block), anchor: caret, head: caret };
+      return { blocks: tidy.blocks, anchor: caret, head: caret };
     });
   };
 }

@@ -45,12 +45,32 @@ describe('element state machine (ux-e-interface.md 5.2)', () => {
     expect(nextOnEnter('shot', true)).toBe('scene-heading');
   });
 
-  it('Tab and Shift+Tab', () => {
-    expect(nextOnTab('dialogue')).toBe('character');
-    expect(nextOnShiftTab('dialogue')).toBe('parenthetical');
-    expect(nextOnTab('scene-heading')).toBe('action');
-    expect(nextOnShiftTab('scene-heading')).toBe('transition');
-    expect(nextOnShiftTab('parenthetical')).toBe('character');
+  it('Tab walks every element in order and wraps; Shift+Tab walks back', () => {
+    const order = [
+      'scene-heading',
+      'action',
+      'character',
+      'parenthetical',
+      'dialogue',
+      'transition',
+      'shot',
+    ] as const;
+    expect([...ELEMENT_TYPES]).toEqual([...order]);
+    order.forEach((t, i) => {
+      expect(nextOnTab(t)).toBe(order[(i + 1) % order.length]);
+      expect(nextOnShiftTab(t)).toBe(order[(i + order.length - 1) % order.length]);
+    });
+    // seven presses in either direction come back to the start, visiting all seven elements
+    for (const step of [nextOnTab, nextOnShiftTab]) {
+      const seen = new Set<string>();
+      let t: (typeof order)[number] = 'action';
+      for (let i = 0; i < order.length; i++) {
+        seen.add(t);
+        t = step(t) as (typeof order)[number];
+      }
+      expect(seen.size).toBe(order.length);
+      expect(t).toBe('action');
+    }
   });
 
   it('every element has a transition for every key', () => {
