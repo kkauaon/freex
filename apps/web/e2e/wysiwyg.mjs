@@ -141,7 +141,8 @@ try {
   await page.waitForTimeout(400);
   const narrow = await page.evaluate(measure);
   check('760 px: the sheet is scaled, not cut', narrow.zoom < 1 && !narrow.pageScroll, { zoom: narrow.zoom, scroll: narrow.pageScroll });
-  check('760 px: pages are still one sheet tall', narrow.gapDiffs.every((d) => d === SHEET_PLUS_GAP), narrow.gapDiffs);
+  // a fractional zoom rounds each measurement to a whole pixel
+  check('760 px: pages are still one sheet tall', narrow.gapDiffs.every((d) => Math.abs(d - SHEET_PLUS_GAP) <= 1), narrow.gapDiffs);
 
   await page.setViewportSize({ width: 360, height: 740 });
   await page.waitForTimeout(400);

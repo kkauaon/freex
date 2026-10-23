@@ -17,7 +17,8 @@
   --warn-soft: #fff3de;
   --ok: #1a7f4b;
   --shadow: 0 1px 2px rgb(20 20 30 / 6%), 0 8px 24px rgb(20 20 30 / 6%);
-  --topbar: 56px;
+  --topbar: 52px;
+  --desk: #e6e5e0;
   --radius: 10px;
 }
 
@@ -38,6 +39,7 @@
     --warn-soft: #382a10;
     --ok: #67d39a;
     --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 30%);
+    --desk: #0b0b0d;
   }
 }
 
@@ -144,36 +146,6 @@ select {
   outline-offset: 2px;
 }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-.chip.danger {
-  background: var(--danger-soft);
-  color: var(--danger);
-  border-color: transparent;
-}
-
-.chip.warn {
-  background: var(--warn-soft);
-  color: var(--warn);
-  border-color: transparent;
-}
-
-.chip.ok {
-  color: var(--ok);
-}
-
 /* ------------------------------------------------------------------ shell */
 
 .shell {
@@ -182,10 +154,38 @@ select {
   flex-direction: column;
 }
 
+.btn {
+  min-height: 36px;
+}
+
+.btn.ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn.ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.btn.ghost[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.btn.small {
+  min-height: 32px;
+}
+
+@media (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+  }
+}
+
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 40;
   height: var(--topbar);
   display: flex;
   align-items: center;
@@ -207,7 +207,7 @@ select {
 
 .brand::before {
   content: '';
-  width: 10px;
+  width: 8px;
   height: 18px;
   border-radius: 2px;
   background: var(--accent);
@@ -219,14 +219,14 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
   color: var(--muted);
   background: none;
   border: 0;
-  text-align: left;
   cursor: pointer;
   padding: 6px 8px;
   border-radius: 6px;
-  min-height: 44px;
+  min-height: 36px;
 }
 
 .doc-title:hover {
@@ -240,7 +240,7 @@ select {
 
 .top-actions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
 }
 
@@ -253,6 +253,14 @@ select {
   .topbar {
     justify-content: space-between;
   }
+}
+
+.top-panels {
+  display: none;
+  gap: 2px;
+  margin-right: 6px;
+  padding-right: 8px;
+  border-right: 1px solid var(--line);
 }
 
 .menu {
@@ -279,7 +287,7 @@ select {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  z-index: 40;
+  z-index: 50;
 }
 
 .menu-list .btn {
@@ -289,23 +297,26 @@ select {
 
 .workspace {
   flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  padding: 12px 12px 76px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 56px;
 }
 
 .pane {
   min-width: 0;
 }
 
-/* Mobile: one section at a time, switched by the bottom bar. */
-.shell[data-view='write'] .pane-side,
-.shell:not([data-view='write']) .pane-write {
-  display: none;
+.pane-write {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.side-tabs {
+/* Phones and tablets: one section at a time, switched by the bottom bar. */
+.shell[data-view='write'] .pane-side,
+.shell:not([data-view='write']) .pane-write {
   display: none;
 }
 
@@ -359,89 +370,79 @@ select {
   color: #fff;
 }
 
+.top-panels .badge,
+.side-tabs .badge {
+  margin-left: 6px;
+}
+
 .badge.warn {
   background: var(--warn);
 }
 
+/* Wide screens: the page fills the window and the panels are a drawer over its right side. */
 @media (min-width: 1100px) {
-  .workspace {
-    grid-template-columns: minmax(0, 1fr) 340px;
-    /* a fixed-height grid: without this the row grows with the (tall) script and is clipped */
-    grid-template-rows: minmax(0, 1fr);
-    padding: 16px;
-    /* flex: 1 would win over height in the column shell, and the script would grow the page */
-    flex: none;
-    height: calc(100dvh - var(--topbar));
-    overflow: hidden;
-    align-items: stretch;
+  .shell {
+    height: 100dvh;
   }
 
-  .shell[data-view='write'] .pane-side,
+  .workspace {
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+
   .shell:not([data-view='write']) .pane-write {
     display: flex;
   }
 
-  .pane {
+  .top-panels {
     display: flex;
-    flex-direction: column;
-    min-height: 0;
   }
 
   .bottom-nav {
     display: none;
   }
-
-  .side-tabs {
-    display: flex;
-  }
 }
 
 /* ------------------------------------------------------------------ editor pane */
-
-.pane-write {
-  gap: 10px;
-  display: flex;
-  flex-direction: column;
-}
 
 .toolbar {
   position: sticky;
   top: var(--topbar);
   z-index: 20;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 6px 12px;
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-bottom: 1px solid var(--line);
   overflow-x: auto;
   scrollbar-width: thin;
-  margin-bottom: 10px;
 }
 
 @media (min-width: 1100px) {
   .toolbar {
     position: static;
-    flex: none;
-    flex-wrap: wrap;
-    overflow: visible;
-    margin-bottom: 0;
+    justify-content: center;
   }
 }
 
 .segmented {
   display: inline-flex;
   gap: 2px;
-  padding: 3px;
-  background: var(--surface-2);
-  border-radius: 8px;
   flex: none;
 }
 
+.segmented + .segmented {
+  margin-left: 6px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+}
+
 .segmented button {
-  min-height: 44px;
-  min-width: 44px;
+  min-height: 36px;
+  min-width: 36px;
   padding: 0 10px;
   border: 0;
   border-radius: 6px;
@@ -451,18 +452,25 @@ select {
   font-size: 0.9rem;
 }
 
-.segmented button:hover {
-  background: var(--surface);
+@media (pointer: coarse) {
+  .segmented button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+.segmented button:hover:not(:disabled) {
+  background: var(--surface-2);
 }
 
 .segmented button[aria-pressed='true'] {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--accent-soft);
+  color: var(--accent);
   font-weight: 600;
 }
 
 .segmented button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -479,12 +487,17 @@ select {
 }
 
 .toast {
+  position: relative;
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 10px;
+  margin: 10px auto 0;
+  width: min(640px, calc(100% - 24px));
   padding: 8px 12px;
   border-radius: var(--radius);
   background: var(--accent-soft);
+  flex: none;
 }
 
 .toast.error {
@@ -500,17 +513,14 @@ select {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  padding: 12px;
+  background: var(--desk);
+  padding: 28px 24px 72px;
 }
 
 @media (max-width: 639px) {
   .editor-scroll {
     padding: 0;
     background: none;
-    border: 0;
   }
 }
 
@@ -524,40 +534,41 @@ select {
 }
 
 .statusbar {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 8px;
   align-items: center;
-  flex: none;
-}
-
-.help {
-  font-size: 0.88rem;
+  gap: 4px 16px;
+  padding: 6px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
   color: var(--muted);
-  flex: none;
 }
 
-.help summary {
+.status-spacer {
+  flex: 1;
+}
+
+.status-link {
+  border: 0;
+  background: none;
+  padding: 4px 6px;
+  min-height: 28px;
   cursor: pointer;
-  min-height: 32px;
-  display: flex;
-  align-items: center;
+  font-weight: 600;
 }
 
-.help dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 12px;
-  margin: 6px 0 0;
+.status-link.danger {
+  color: var(--danger);
 }
 
-.help dt {
-  font-family: var(--font-script), monospace;
-  color: var(--ink);
+.status-link.warn {
+  color: var(--warn);
 }
 
-.help dd {
-  margin: 0;
+.status-ok {
+  color: var(--ok);
 }
 
 /* ------------------------------------------------------------------ the script, on sheets */
@@ -854,30 +865,36 @@ select {
 /* ------------------------------------------------------------------ side pane */
 
 .pane-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
+}
+
+.side-head {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding: 0 6px 0 4px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
 }
 
 .side-tabs {
-  flex: none;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-2);
-  padding: 0 6px;
+  display: flex;
   gap: 2px;
 }
 
 .side-tabs button {
   min-height: 46px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 0;
   background: none;
   cursor: pointer;
   color: var(--muted);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   border-bottom: 3px solid transparent;
 }
 
@@ -885,6 +902,29 @@ select {
   color: var(--ink);
   font-weight: 600;
   border-bottom-color: var(--accent);
+}
+
+.drawer-close {
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 0 12px;
+}
+
+@media (min-width: 1100px) {
+  .side-head {
+    display: flex;
+  }
+
+  .pane-side {
+    position: fixed;
+    top: var(--topbar);
+    right: 0;
+    bottom: 0;
+    z-index: 35;
+    width: min(420px, 100vw);
+    border-left: 1px solid var(--line);
+    box-shadow: -12px 0 32px rgb(0 0 0 / 14%);
+  }
 }
 
 .panel {
@@ -906,6 +946,24 @@ select {
 .panel-note {
   color: var(--muted);
   margin-bottom: 12px;
+}
+
+.shortcuts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.shortcuts dt {
+  font-family: var(--font-script), monospace;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.shortcuts dd {
+  margin: 0;
+  color: var(--muted);
 }
 
 /* ------------------------------------------------------------------ preview */

@@ -39,6 +39,8 @@ import { SHEET_W, buildPageDecorations, pageDecorations, pageDecorationsKey } fr
 
 /** Below this width the editor drops the page geometry and writes in a single column. */
 export const LINEAR_BELOW_PX = 640;
+/** On wide windows the sheet grows up to this factor, so the text is easier to read. */
+const MAX_ZOOM = 1.25;
 
 export interface EditorUiState extends SelectionInfo {
   readonly canUndo: boolean;
@@ -168,7 +170,7 @@ export const ScriptEditor = forwardRef<ScriptEditorApi, Props>(function ScriptEd
       setFit(
         w < LINEAR_BELOW_PX
           ? { zoom: 1, linear: true }
-          : { zoom: Math.min(1, w / SHEET_W), linear: false },
+          : { zoom: Math.min(MAX_ZOOM, w / SHEET_W), linear: false },
       );
     };
     measure();

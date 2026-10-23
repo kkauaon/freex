@@ -25,7 +25,7 @@ import {
 import { PagePreview } from './editor/PagePreview';
 import { ScriptEditor, type EditorUiState, type ScriptEditorApi } from './editor/ScriptEditor';
 
-type Side = 'preview' | 'issues' | 'cover';
+type Side = 'preview' | 'issues' | 'cover' | 'help';
 type View = 'write' | Side;
 
 const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
@@ -141,6 +141,19 @@ export default function Home() {
   };
   const previewVisible = phone && current === 'preview';
   const empty = analysis.blocks.length === 0;
+  const toggleSide = (side: Side) => (current === side ? setView('write') : openSide(side));
+
+  // on wide screens the panels are a drawer over the writing area: Escape puts it away
+  useEffect(() => {
+    if (!wide || current === 'write') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setView('write');
+      editor.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [wide, current]);
 
   // ---- actions
   function inform(text: string, undo = false) {
@@ -231,15 +244,37 @@ export default function Home() {
 
   const tool = (onClick: () => void) => ({ onMouseDown: keepFocus, onClick });
 
+  const panels = [
+    ['issues', 'Problemas'],
+    ['cover', 'Capa'],
+    ['help', 'Atalhos'],
+  ] as const;
+
   return (
     <div className="shell" data-view={current}>
       <header className="topbar">
         <span className="brand">FREEX</span>
-        <button type="button" className="doc-title" onClick={() => openSide('cover')}>
+        <button type="button" className="doc-title" onClick={() => toggleSide('cover')}>
           <strong>{title || 'Sem título'}</strong>
           <span className="sr-only"> — editar a capa</span>
         </button>
         <div className="top-actions">
+          <div className="top-panels" role="group" aria-label="Painéis">
+            {panels.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className="btn ghost"
+                aria-pressed={wide && current === id}
+                onClick={() => toggleSide(id)}
+              >
+                {label}
+                {id === 'issues' && problems > 0 && (
+                  <span className={`badge${analysis.errors === 0 ? ' warn' : ''}`}>{problems}</span>
+                )}
+              </button>
+            ))}
+          </div>
           <input
             id="import"
             className="file-input"
@@ -250,7 +285,7 @@ export default function Home() {
               e.target.value = '';
             }}
           />
-          <label htmlFor="import" className="btn">
+          <label htmlFor="import" className="btn ghost">
             Importar
           </label>
           <details className="menu" ref={exportMenu}>
@@ -397,58 +432,55 @@ export default function Home() {
           </p>
 
           <div className="statusbar">
-            <span className="chip">{analysis.scriptPages} pág.</span>
-            <span className="chip">{analysis.words} palavras</span>
-            <span className="chip">{analysis.characters} caracteres</span>
+            <span>{analysis.scriptPages} pág.</span>
+            <span>{analysis.words} palavras</span>
+            <span>{analysis.characters} caracteres</span>
+            <span className="status-spacer" />
             {analysis.errors > 0 && (
-              <button type="button" className="chip danger" onClick={() => openSide('issues')}>
+              <button type="button" className="status-link danger" onClick={() => openSide('issues')}>
                 {analysis.errors} erro(s)
               </button>
             )}
             {analysis.warnings > 0 && (
-              <button type="button" className="chip warn" onClick={() => openSide('issues')}>
+              <button type="button" className="status-link warn" onClick={() => openSide('issues')}>
                 {analysis.warnings} aviso(s)
               </button>
             )}
-            {problems === 0 && !empty && <span className="chip ok">Sem problemas</span>}
+            {problems === 0 && !empty && <span className="status-ok">Sem problemas</span>}
           </div>
-
-          <details className="help">
-            <summary>Atalhos de teclado</summary>
-            <dl>
-              {SHORTCUTS.map(([keys, what]) => (
-                <div key={keys} style={{ display: 'contents' }}>
-                  <dt>{keys}</dt>
-                  <dd>{what}</dd>
-                </div>
-              ))}
-            </dl>
-          </details>
         </section>
 
-        <aside className="pane pane-side" aria-label="Prévia e revisão">
-          <div className="side-tabs" role="tablist" aria-label="Seções">
-            {(
-              [
-                ['issues', 'Problemas'],
-                ['cover', 'Capa'],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                id={`tab-${id}`}
-                type="button"
-                role="tab"
-                aria-selected={sideView === id}
-                aria-controls={`panel-${id}`}
-                onClick={() => openSide(id)}
-              >
-                {label}
-                {id === 'issues' && problems > 0 && (
-                  <span className={`badge${analysis.errors === 0 ? ' warn' : ''}`}>{problems}</span>
-                )}
-              </button>
-            ))}
+        <aside className="pane pane-side" aria-label="Painéis">
+          <div className="side-head">
+            <div className="side-tabs" role="tablist" aria-label="Seções">
+              {panels.map(([id, label]) => (
+                <button
+                  key={id}
+                  id={`tab-${id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={sideView === id}
+                  aria-controls={`panel-${id}`}
+                  onClick={() => openSide(id)}
+                >
+                  {label}
+                  {id === 'issues' && problems > 0 && (
+                    <span className={`badge${analysis.errors === 0 ? ' warn' : ''}`}>{problems}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn ghost drawer-close"
+              aria-label="Fechar painel"
+              onClick={() => {
+                setView('write');
+                editor.current?.focus();
+              }}
+            >
+              ×
+            </button>
           </div>
 
           <div id="panel-preview" role="tabpanel" aria-label="Páginas" className="panel" hidden={sideView !== 'preview'}>
@@ -466,10 +498,8 @@ export default function Home() {
 
           <div id="panel-issues" role="tabpanel" aria-labelledby="tab-issues" className="panel" hidden={sideView !== 'issues'}>
             <h2>Problemas</h2>
-            <p className="panel-note">
-              Erros impedem a exportação. Avisos pedem confirmação.
-            </p>
-            <div className="toolbar-inline" style={{ marginBottom: 12 }}>
+            <p className="panel-note">Erros impedem a exportação. Avisos pedem confirmação.</p>
+            <div style={{ marginBottom: 12 }}>
               <button type="button" className="btn small" onClick={autoFix} disabled={empty}>
                 Corrigir espaços e caixa
               </button>
@@ -583,6 +613,18 @@ export default function Home() {
               </div>
             </form>
           </div>
+
+          <div id="panel-help" role="tabpanel" aria-labelledby="tab-help" className="panel" hidden={sideView !== 'help'}>
+            <h2>Atalhos de teclado</h2>
+            <dl className="shortcuts">
+              {SHORTCUTS.map(([keys, what]) => (
+                <div key={keys} style={{ display: 'contents' }}>
+                  <dt>{keys}</dt>
+                  <dd>{what}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </aside>
       </div>
 
@@ -593,17 +635,23 @@ export default function Home() {
             ['preview', 'Páginas'],
             ['issues', 'Problemas'],
             ['cover', 'Capa'],
+            ['help', 'Atalhos'],
           ] as const
         )
-          .filter(([id]) => id !== 'preview' || phone)
+          .filter(([id]) => (id === 'preview' ? phone : id === 'help' ? !phone : true))
           .map(([id, label]) => (
-          <button key={id} type="button" aria-current={current === id} onClick={() => (id === 'write' ? setView('write') : openSide(id))}>
-            {label}
-            {id === 'issues' && problems > 0 && (
-              <span className={`badge${analysis.errors === 0 ? ' warn' : ''}`}>{problems}</span>
-            )}
-          </button>
-        ))}
+            <button
+              key={id}
+              type="button"
+              aria-current={current === id}
+              onClick={() => (id === 'write' ? setView('write') : openSide(id))}
+            >
+              {label}
+              {id === 'issues' && problems > 0 && (
+                <span className={`badge${analysis.errors === 0 ? ' warn' : ''}`}>{problems}</span>
+              )}
+            </button>
+          ))}
       </nav>
     </div>
   );
