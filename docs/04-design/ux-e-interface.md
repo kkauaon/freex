@@ -21,7 +21,7 @@ Isso não significa uma tela vazia. Significa que a complexidade aparece quando 
 
 1. **O texto é o herói.** A página tem contraste, espaço e silêncio ao redor. Barras e painéis são secundários.
 2. **Formato invisível, consequência visível.** O usuário vê a página formatada e a contagem de páginas, não campos de margem.
-3. **Uma página de verdade.** No desktop, a prévia e o editor mostram a mesma página que o PDF terá. No celular, o editor usa modo linear, mas a prévia paginada continua idêntica ao PDF.
+3. **Uma página de verdade.** No desktop e no tablet o editor **é** a página: o texto é escrito direto nas folhas de 8,5 × 11 pol, com a capa, as quebras de página, o número, `(MORE)` e `(CONT'D)` no lugar em que o PDF os terá, e não há uma segunda visualização ao lado. No celular, o editor usa modo linear e a prévia paginada, idêntica ao PDF, fica em uma aba própria.
 4. **Nenhuma ação destrutiva silenciosa.** Restaurar, excluir, remover membro e sobrescrever exigem confirmação clara.
 5. **Estado sempre visível.** Salvo, sincronizando, offline, somente leitura. O usuário nunca precisa adivinhar.
 6. **Teclado e toque.** Escrever é teclado no desktop; no celular, a barra de elementos e os controles de toque têm o mesmo peso. Toda ação continua acessível sem mouse.
@@ -234,6 +234,20 @@ Regras adicionais:
 - `Enter` em um diálogo duplo cria uma nova linha na coluna ativa; `Ctrl/Cmd+Enter` insere um cabeçalho de cena após o bloco e sai do diálogo duplo.
 - Digitar um nome em maiúsculas seguidas de `Enter` no início de uma linha de ação pode converter para personagem, mas a conversão só ocorre com confirmação visual e desfazer disponível. A regra exata fica em [`../02-roteiro/elementos-e-convencoes.md`](../02-roteiro/elementos-e-convencoes.md).
 - Nenhuma tecla cria uma quebra de página manual. A paginação é consequência do conteúdo.
+
+**Implementação** (`apps/web/app/editor/commands.ts`, testada sem navegador, inclusive com sequências aleatórias de teclas que exigem documento válido):
+
+- `Enter` no meio do texto divide o bloco; a segunda metade mantém o tipo em ação e diálogo e ganha o tipo seguinte da tabela nos demais. Em personagem ou parêntese que já tem a linha seguinte, o cursor passa para ela em vez de criar outra.
+- Um parêntese guarda os parênteses no texto. O cursor fica dentro deles e o `)` conta como fim do conteúdo.
+- A conversão de uma linha de ação toda em maiúsculas (até 22 caracteres, sem pontuação final, que não seja cabeçalho, transição nem plano) em personagem acontece no `Enter` e mostra um aviso com **Desfazer**.
+- `Backspace` no início de um bloco: bloco vazio some e o cursor sobe; bloco de outro elemento volta a ação; ação (ou bloco do mesmo elemento) junta com o de cima. `Delete` no fim puxa o bloco seguinte.
+- `Alt+Shift+1…7` escolhe o elemento (cena, ação, personagem, parêntese, diálogo, transição, plano). A barra de elementos faz o mesmo e é o caminho no celular. Os botões não tiram o foco do roteiro.
+- Estrutura (fala, diálogo duplo) é mantida por reconstrução do trecho com o motor (`normalizeBlocks` e `blocksToDocument`): converter um bloco nunca deixa o documento fora do esquema; um diálogo sem personagem ganha um personagem vazio, e um personagem sem diálogo, um diálogo vazio.
+- Só texto puro é colado. Várias linhas são lidas como Fountain e entram como novos blocos.
+- **O editor é a página** (`apps/web/app/editor/pageBreaks.ts`). A paginação do motor é calculada a cada mudança do texto (150 ms depois da última tecla) e vira widgets não editáveis do ProseMirror: a capa como primeira folha, a margem de cada folha, o intervalo entre folhas, o número da página, `(MORE)` e as linhas `NOME (CONT'D)`. Uma linha é 16 px e uma coluna 9,6 px (Courier Prime 12 pt a 96 px por polegada), a mesma grade do PDF; o navegador quebra as linhas de cada bloco com a mesma regra do motor (guloso, por caracteres), e a altura de cada quebra é calculada pelas linhas que o motor contou. Enquanto a paginação nova não chega, as quebras acompanham o texto.
+- A folha encolhe (zoom) quando a coluna é mais estreita que 8,5 pol, a partir de 640 px. Abaixo disso o editor usa o modo linear (sem a geometria da página, com o nome do elemento acima do bloco atual e a coluna do diálogo duplo identificada) e a prévia paginada está na aba **Páginas**. Entre 640 e 1099 px as seções Problemas e Capa ficam na barra inferior; a partir de 1100 px ficam num painel ao lado.
+- A capa aparece como a primeira folha e se edita na seção Capa; nenhum controle de margem, fonte ou espaçamento existe.
+- Ainda não existem: autocompletar de personagens na digitação (FR-EDT-008), localizar e substituir, navegador de cenas e modo foco.
 
 ### 5.3 Normalização
 

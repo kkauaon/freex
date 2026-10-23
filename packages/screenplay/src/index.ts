@@ -7,6 +7,7 @@ export * from './elements';
 export * from './fountain';
 export * from './outline';
 export * from './parse';
+export * from './schema';
 export * from './text';
 export * from './validate';
 export * from './vocabulary';

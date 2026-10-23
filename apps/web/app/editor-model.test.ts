@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { SAMPLE, analyze, applyAutoFix, exportRequest, lineRange } from './editor-model';
 import { PaginateRequest } from '@freex/contracts';
+import { parseFountain } from '@freex/screenplay';
+import {
+  EMPTY_COVER,
+  SAMPLE,
+  analyze,
+  analyzeBlocks,
+  exportRequest,
+  toCoverForm,
+  toTitlePage,
+} from './editor-model';
 
 describe('analyze', () => {
   it('the sample is a clean script with a title page', () => {
@@ -22,14 +31,14 @@ describe('analyze', () => {
     expect(a.scriptPages).toBe(1);
   });
 
-  it('points each validation issue at the line where the element starts', () => {
-    const src = 'INT. SALA - DIA\n\nAna entra.\n\nANA\n(baixo)\n';
-    const a = analyze(src);
-    const dangling = a.items.filter((i) => i.severity === 'error');
-    expect(dangling.length).toBeGreaterThan(0);
+  it('points each validation issue at the block it is about', () => {
+    const a = analyze('INT. SALA - DIA\n\nAna entra.\n\nANA\n(baixo)\n');
+    const errors = a.items.filter((i) => i.severity === 'error');
+    expect(errors.length).toBeGreaterThan(0);
     expect(a.blocking).toBe(true);
-    const lines = src.split('\n');
-    for (const item of dangling) expect(lines[item.line ?? -1]).toMatch(/ANA|\(baixo\)/);
+    for (const item of errors) {
+      expect(['character', 'parenthetical']).toContain(a.blocks[item.blockIndex ?? -1]?.type);
+    }
   });
 
   it('warnings do not block the export', () => {
@@ -39,66 +48,38 @@ describe('analyze', () => {
     expect(a.blocking).toBe(false);
   });
 
-  it('lists syntax dropped by the Fountain reader', () => {
+  it('keeps the syntax the Fountain reader dropped apart from the script problems', () => {
     const a = analyze('INT. SALA - DIA\n\n===\n\nAna entra.\n');
-    const dropped = a.items.find((i) => i.code === 'IMPORT');
-    expect(dropped).toMatchObject({ severity: 'error', line: 2 });
-    // dropped syntax is reported but does not block the export of the rest
+    expect(a.importIssues).toHaveLength(1);
+    expect(a.importIssues[0]).toMatchObject({ severity: 'error', line: 3 });
+    expect(a.items).toEqual([]);
     expect(a.blocking).toBe(false);
   });
 
-  it('asks for a title and an author when the title page is incomplete', () => {
+  it('asks for a title and an author when the cover is incomplete', () => {
     const a = analyze('Title: Casa\n\nINT. SALA - DIA\n\nAna entra.\n');
-    expect(a.items.find((i) => i.code === 'FMT111')).toMatchObject({ line: 0, severity: 'warning' });
+    expect(a.items.find((i) => i.code === 'FMT111')).toMatchObject({ blockIndex: null, severity: 'warning' });
   });
 
-  it('keeps the page count stable while the title page changes', () => {
+  it('is deterministic and the cover changes the hash but not the script pages', () => {
+    expect(analyze(SAMPLE).hash).toBe(analyze(SAMPLE).hash);
     const a = analyze(SAMPLE);
     const b = analyze(SAMPLE.replace('Casa Vazia', 'Outra Casa'));
     expect(b.scriptPages).toBe(a.scriptPages);
     expect(b.hash).not.toBe(a.hash);
   });
-
-  it('is deterministic', () => {
-    expect(analyze(SAMPLE).hash).toBe(analyze(SAMPLE).hash);
-  });
 });
 
-describe('applyAutoFix', () => {
-  it('fixes spacing and case without changing words, and keeps emphasis', () => {
-    const fixed = applyAutoFix('int. sala - dia\n\nAna   entra  ,  com *pressa*.\n');
-    expect(fixed).toBe('INT. SALA - DIA\n\nAna entra, com *pressa*.\n');
-  });
-
-  it('is idempotent', () => {
-    const once = applyAutoFix('int. sala - dia\n\nana\noi.\n');
-    expect(applyAutoFix(once)).toBe(once);
-  });
-
-  it('keeps the title page and removes the matching warnings', () => {
-    const src = 'Title: Casa\nAuthor: Ana\n\nint. sala - dia\n\nAna entra.\n';
-    expect(analyze(src).items.some((i) => i.code === 'FMT113')).toBe(true);
-    expect(analyze(applyAutoFix(src)).items.some((i) => i.code === 'FMT113')).toBe(false);
-    expect(applyAutoFix(src).startsWith('Title: Casa\nAuthor: Ana')).toBe(true);
-  });
-});
-
-describe('lineRange', () => {
-  const src = 'abc\n\nde\nf';
-  it('selects a line without its line feed', () => {
-    expect(lineRange(src, 0)).toEqual([0, 3]);
-    expect(lineRange(src, 1)).toEqual([4, 4]);
-    expect(lineRange(src, 2)).toEqual([5, 7]);
-    expect(lineRange(src, 3)).toEqual([8, 9]);
-  });
-
-  it('clamps past the end', () => {
-    expect(lineRange(src, 99)).toEqual([9, 9]);
+describe('analyzeBlocks', () => {
+  it('works on blocks straight from the editor', () => {
+    const a = analyzeBlocks([{ type: 'action', text: 'Ana entra.' }], null);
+    expect(a.pages).toHaveLength(1);
+    expect(a.items).toEqual([]);
   });
 });
 
 describe('exportRequest', () => {
-  it('matches the API contract, title page included', () => {
+  it('matches the API contract, cover included', () => {
     const body = exportRequest(analyze(SAMPLE));
     expect(PaginateRequest.safeParse(body).success).toBe(true);
     expect(body.titlePage?.title).toBe('Casa Vazia');
@@ -108,5 +89,39 @@ describe('exportRequest', () => {
     const body = exportRequest(analyze('INT. SALA - DIA\n\nAna entra.\n'));
     expect('titlePage' in body).toBe(false);
     expect(PaginateRequest.safeParse(body).success).toBe(true);
+  });
+});
+
+describe('cover form', () => {
+  it('an empty form means no title page', () => {
+    expect(toTitlePage(EMPTY_COVER)).toBeNull();
+    expect(toTitlePage({ ...EMPTY_COVER, title: '   ' })).toBeNull();
+    expect(toCoverForm(null)).toEqual(EMPTY_COVER);
+  });
+
+  it('splits authors and contact lines and drops blanks', () => {
+    const page = toTitlePage({
+      ...EMPTY_COVER,
+      title: ' Casa ',
+      authors: 'Ana\n\n João \n',
+      contact: 'ana@exemplo.com\n  +55 11 99999-9999 \n',
+      date: ' 2026-10-23 ',
+    });
+    expect(page).toEqual({
+      title: 'Casa',
+      authors: ['Ana', 'João'],
+      contact: 'ana@exemplo.com\n+55 11 99999-9999',
+      date: '2026-10-23',
+    });
+  });
+
+  it('round-trips with the Fountain title page', () => {
+    const page = parseFountain(SAMPLE).titlePage;
+    expect(toTitlePage(toCoverForm(page))).toEqual(page);
+  });
+
+  it('a form is valid for the API', () => {
+    const page = toTitlePage({ ...EMPTY_COVER, title: 'Casa', authors: 'Ana' });
+    expect(PaginateRequest.safeParse({ blocks: [], titlePage: page }).success).toBe(true);
   });
 });

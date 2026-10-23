@@ -4,7 +4,7 @@ Instruções para agentes e pessoas que trabalharem neste repositório.
 
 ## 1. Estado atual
 
-O repositório está na **fase 1 (fundação mínima)**. Existe um scaffold funcional (`pnpm install`, `pnpm typecheck`, `pnpm test`) com `packages/screenplay` (elementos, máquina de estados, parsers, normalização, validação `FMT*`, ênfase inline, documento canônico e import/export Fountain como biblioteca), `packages/layout` (paginador com coesão, órfãs e viúvas, `(MORE)`/`(CONT'D)`, diálogo duplo, página de título, intervalo de páginas, hash e `LAYOUT_VERSION` 2; ver `paginacao-e-quebras.md`, seção 14), `packages/contracts`, `packages/pdf` (HTML pré-paginado + Chromium via Playwright, Courier Prime embutida), `apps/api` (Fastify: `/v1/health`, `/v1/layout/paginate` e `/v1/export/pdf` síncrono, sem auth nem banco) e `apps/web` (Next.js com editor de texto Fountain, painel de validação com salto à linha, prévia paginada com página de título e exportação de PDF e Fountain; ainda não é o editor ProseMirror). Não existem ainda: banco, auth, colaboração, worker/PDF, ESLint, CI, `pnpm dev` validado, `lint`, `test:e2e`, `test:pdf` e `db:migrate`.
+O repositório está na **fase 1 (fundação mínima)**. Existe um scaffold funcional (`pnpm install`, `pnpm typecheck`, `pnpm test`) com `packages/screenplay` (elementos, máquina de estados, parsers, normalização, validação `FMT*`, ênfase inline, documento canônico e import/export Fountain como biblioteca), `packages/layout` (paginador com coesão, órfãs e viúvas, `(MORE)`/`(CONT'D)`, diálogo duplo, página de título, intervalo de páginas, hash e `LAYOUT_VERSION` 2; ver `paginacao-e-quebras.md`, seção 14), `packages/contracts`, `packages/pdf` (HTML pré-paginado + Chromium via Playwright, Courier Prime embutida), `apps/api` (Fastify: `/v1/health`, `/v1/layout/paginate` e `/v1/export/pdf` síncrono, sem auth nem banco) e `apps/web` (Next.js com editor ProseMirror WYSIWYG: o texto é escrito direto nas folhas, com capa, quebras de página, número, `(MORE)`/`(CONT'D)` vindos do motor e Courier Prime; máquina de estados de elementos, ênfase, diálogo duplo, painel de problemas com salto ao trecho, rascunho local e exportação de PDF e Fountain; modo linear no celular, com a prévia numa aba; sem colaboração, autenticação nem projetos). Não existem ainda: banco, auth, colaboração, worker/PDF, ESLint, CI, `pnpm dev` validado, `lint`, `test:e2e`, `test:pdf` e `db:migrate`.
 
 Regras para o que ainda não existe:
 
@@ -162,7 +162,8 @@ Regras de dependência:
 | `pnpm build` | Build de produção | Planejado |
 | `pnpm lint` | Lint e formatação | Planejado |
 | `pnpm typecheck` | TypeScript estrito | Funcional |
-| `pnpm test` | Unidade e integração | Funcional (screenplay, layout, pdf, api) |
+| `pnpm test` | Unidade e integração | Funcional (screenplay, layout, pdf, api, web) |
+| `pnpm --filter @freex/web e2e` | Confere no Chromium que o editor é WYSIWYG (cada página mede uma folha, linhas na grade de 16 px); exige `pnpm --filter @freex/web build && start` rodando | Funcional, manual; ainda fora de `pnpm test` e sem CI |
 | `pnpm test:e2e` | Playwright | Planejado |
 | `pnpm test:pdf` | Golden PDFs e paridade | Planejado |
 | `pnpm db:migrate` | Migrações Drizzle | Planejado |

@@ -39,6 +39,15 @@ export interface Line {
   readonly text: string;
   /** Inline emphasis, offsets relative to `text`. */
   readonly marks?: readonly Mark[];
+  /** Index of the input block this line was wrapped from. */
+  readonly block?: number;
+  /** Offset in the block text where this line starts, for mapping a line back to the editor. */
+  readonly from?: number;
+  /**
+   * Set on lines the engine adds that are not in the script text: `(MORE)` at the end of a
+   * page and the `NAME (CONT'D)` cue at the top of the next one.
+   */
+  readonly synthetic?: 'more' | 'contd';
 }
 
 export interface Page {
@@ -61,6 +70,9 @@ interface Cell {
   readonly text: string;
   readonly r: number;
   readonly marks?: readonly Mark[];
+  readonly block?: number;
+  readonly from?: number;
+  readonly synthetic?: 'more' | 'contd';
 }
 
 function lineMarks(source: readonly number[], marks: readonly Mark[] | undefined): Mark[] {
@@ -88,6 +100,7 @@ function textCells(
   width: number,
   align: 'left' | 'right',
   type: ElementType = block.type,
+  index?: number,
 ): Cell[] {
   const text = block.type === 'scene-heading' ? block.text.toUpperCase() : block.text;
   // upper-casing can change the length (e.g. ß); marks would then point at the wrong chars
@@ -100,6 +113,7 @@ function textCells(
       text: l.text,
       r,
       ...(marks.length > 0 && { marks }),
+      ...(index !== undefined && { block: index, from: l.source[0] ?? 0 }),
     };
   });
 }
@@ -111,17 +125,24 @@ function toLine(cell: Cell, row: number): Line {
     col: cell.col,
     text: cell.text,
     ...(cell.marks && { marks: cell.marks }),
+    ...(cell.block !== undefined && { block: cell.block }),
+    ...(cell.from !== undefined && { from: cell.from }),
+    ...(cell.synthetic && { synthetic: cell.synthetic }),
   };
 }
 
-export function layoutBlock(block: Block): Line[] {
+function blockCells(block: Block, index?: number): Cell[] {
   const box = ELEMENT_BOX[block.type];
   // FADE IN: is the one transition kept on the left margin (normas-de-formatacao.md 5.6)
   const align =
     block.type === 'transition'
       ? (classifyTransition(block.text)?.align ?? box.align)
       : box.align;
-  return textCells(block, box.indent, box.width, align).map((c) => toLine(c, c.r));
+  return textCells(block, box.indent, box.width, align, block.type, index);
+}
+
+export function layoutBlock(block: Block): Line[] {
+  return blockCells(block).map((c) => toLine(c, c.r));
 }
 
 // ------------------------------------------------------------------ items
@@ -133,6 +154,8 @@ interface SpeechRow {
 
 interface Speech {
   readonly kind: 'speech';
+  /** Index of the first block of the speech in the input. */
+  readonly index: number;
   readonly column: 'left' | 'right' | undefined;
   readonly cueText: string | null;
   readonly cue: readonly Cell[];
@@ -162,14 +185,16 @@ function buildSpeech(blocks: readonly Block[], start: number): { speech: Speech;
     const b = blocks[i];
     if (b?.type !== 'parenthetical' && b?.type !== 'dialogue') break;
     const box = b.type === 'parenthetical' ? PAREN_BOX : DIALOGUE_BOX;
-    for (const cell of textCells(b, box.indent, box.width, 'left')) {
+    for (const cell of textCells(b, box.indent, box.width, 'left', b.type, i)) {
       body.push({ cell, kind: b.type });
     }
   }
-  const cue = hasCue && first ? textCells(first, CUE_BOX.indent, CUE_BOX.width, 'left') : [];
+  const cue =
+    hasCue && first ? textCells(first, CUE_BOX.indent, CUE_BOX.width, 'left', 'character', start) : [];
   return {
     speech: {
       kind: 'speech',
+      index: start,
       column: hasCue ? first?.column : undefined,
       cueText: hasCue && first ? first.text : null,
       cue,
@@ -196,13 +221,7 @@ function buildItems(blocks: readonly Block[]): Item[] {
       i = next;
       continue;
     }
-    const cells = layoutBlock(b).map((l, r) => ({
-      type: l.type,
-      col: l.col,
-      text: l.text,
-      r,
-      ...(l.marks && { marks: l.marks }),
-    }));
+    const cells = blockCells(b, i);
     items.push({
       kind:
         b.type === 'action'
@@ -223,7 +242,7 @@ function buildItems(blocks: readonly Block[]): Item[] {
 function dualCells(speech: Speech, side: 'left' | 'right'): Cell[] {
   const g = DUAL_DIALOGUE_BOX[side];
   const cells: Cell[] = [];
-  for (const b of speech.source) {
+  for (const [k, b] of speech.source.entries()) {
     // the right cue column is narrower so the name stays inside the text area
     const box =
       b.type === 'character'
@@ -231,7 +250,7 @@ function dualCells(speech: Speech, side: 'left' | 'right'): Cell[] {
         : b.type === 'parenthetical'
           ? { indent: g.parenthetical.indent, width: Math.floor(g.parenthetical.width) }
           : { indent: g.dialogue.indent, width: g.dialogue.width };
-    for (const c of textCells(b, box.indent, box.width, 'left')) {
+    for (const c of textCells(b, box.indent, box.width, 'left', b.type, speech.index + k)) {
       cells.push({ ...c, r: cells.length });
     }
   }
@@ -253,12 +272,15 @@ function contdCueText(cueText: string): string {
   return [name, ...kept.map((e) => `(${e})`), "(CONT'D)"].join(' ');
 }
 
-function cueCells(text: string): Cell[] {
+function cueCells(text: string, block: number): Cell[] {
   return wrapWithOffsets(text, CUE_BOX.width).map((l, r) => ({
     type: 'character' as const,
     col: CUE_BOX.indent,
     text: l.text,
     r,
+    block,
+    from: 0,
+    synthetic: 'contd' as const,
   }));
 }
 
@@ -414,7 +436,15 @@ export function paginate(blocks: readonly Block[]): Page[] {
         k = Math.max(1, Math.min(avail - 1, rows.length - 1));
       }
       const head = rows.slice(0, k).map((r, i) => ({ ...r.cell, r: i }));
-      head.push({ type: 'character', col: CUE_BOX.indent, text: '(MORE)', r: head.length });
+      const last = head[head.length - 1];
+      head.push({
+        type: 'character',
+        col: CUE_BOX.indent,
+        text: '(MORE)',
+        r: head.length,
+        ...(last?.block !== undefined && { block: last.block }),
+        synthetic: 'more',
+      });
       put(head, gap);
       newPage();
       const tail = rows.slice(k);
@@ -423,7 +453,7 @@ export function paginate(blocks: readonly Block[]): Page[] {
       } else {
         const next = contdCueText(cueText);
         cueText = next;
-        rows = [...cueCells(next).map((cell) => ({ cell, kind: 'cue' as const })), ...tail];
+        rows = [...cueCells(next, speech.index).map((cell) => ({ cell, kind: 'cue' as const })), ...tail];
       }
     }
   };

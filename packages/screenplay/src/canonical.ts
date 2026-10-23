@@ -61,33 +61,105 @@ function leaf(type: string, block: Block | undefined, attrs?: Record<string, unk
 
 const SPEECH_TYPES: ReadonlySet<Block['type']> = new Set(['character', 'parenthetical', 'dialogue']);
 
+export interface NormalizedBlocks {
+  readonly blocks: Block[];
+  /** `origin[i]` is the index in the input of `blocks[i]`, or null for a block that was added. */
+  readonly origin: (number | null)[];
+}
+
 /**
- * Builds the document tree from flat blocks. Sequences that do not satisfy the schema are
- * normalised so the result is always valid: a stray parenthetical or dialogue gets an empty
- * character, a character without dialogue gets an empty dialogue, and a `left` column without
- * a following `right` column loses its column. Use `validateBlocks` to report such problems.
+ * Makes a flat sequence satisfy the schema: a stray parenthetical or dialogue gets an empty
+ * character in front, a character without dialogue gets an empty dialogue after it, and a
+ * `left` column without a `right` column right after it (or the reverse) loses its column.
+ * Blocks keep their order; `origin` lets callers carry a selection through the change.
  */
-export function blocksToDocument(blocks: readonly Block[]): ScriptDocument {
-  type Entry = { node: PmNode; column: 'left' | 'right' | undefined };
-  const entries: Entry[] = [];
+export function normalizeBlocks(blocks: readonly Block[]): NormalizedBlocks {
+  type Item = { block: Block; origin: number | null };
+  const groups: (Item | Item[])[] = [];
 
   for (let i = 0; i < blocks.length; ) {
     const b = blocks[i];
     if (!b) break;
-    if (SPEECH_TYPES.has(b.type)) {
-      const cue = b.type === 'character' ? b : undefined;
-      let j = cue ? i + 1 : i;
+    if (!SPEECH_TYPES.has(b.type)) {
+      groups.push({ block: b, origin: i });
+      i++;
+      continue;
+    }
+    const speech: Item[] = [];
+    if (b.type === 'character') {
+      speech.push({ block: b, origin: i });
+      i++;
+    } else {
+      speech.push({ block: { type: 'character', text: '' }, origin: null });
+    }
+    for (; i < blocks.length; i++) {
+      const x = blocks[i];
+      if (x?.type !== 'parenthetical' && x?.type !== 'dialogue') break;
+      // two parentheticals in a row need a dialogue between them
+      if (x.type === 'parenthetical' && speech[speech.length - 1]?.block.type === 'parenthetical') {
+        speech.push({ block: { type: 'dialogue', text: '' }, origin: null });
+      }
+      speech.push({ block: x, origin: i });
+    }
+    // every parenthetical must be followed by a dialogue; the speech needs at least one
+    const last = speech[speech.length - 1];
+    if (!last || last.block.type !== 'dialogue') {
+      speech.push({ block: { type: 'dialogue', text: '' }, origin: null });
+    }
+    groups.push(speech);
+  }
+
+  // dual dialogue: only a `left` speech immediately followed by a `right` one is kept
+  const speeches = groups.filter((g): g is Item[] => Array.isArray(g));
+  const paired = new Set<Item[]>();
+  for (let k = 0; k < groups.length - 1; k++) {
+    const x = groups[k];
+    const y = groups[k + 1];
+    if (Array.isArray(x) && Array.isArray(y) && x[0]?.block.column === 'left' && y[0]?.block.column === 'right') {
+      paired.add(x);
+      paired.add(y);
+    }
+  }
+  for (const sp of speeches) {
+    const cue = sp[0];
+    if (cue && cue.block.column !== undefined && !paired.has(sp)) {
+      const { column: _drop, ...rest } = cue.block;
+      sp[0] = { block: rest, origin: cue.origin };
+    }
+  }
+
+  const out: Block[] = [];
+  const origin: (number | null)[] = [];
+  for (const g of groups) {
+    for (const item of Array.isArray(g) ? g : [g]) {
+      out.push(item.block);
+      origin.push(item.origin);
+    }
+  }
+  return { blocks: out, origin };
+}
+
+/**
+ * Builds the document tree from flat blocks, normalising them first (see `normalizeBlocks`)
+ * so the result is always valid. Use `validateBlocks` to report such problems.
+ */
+export function blocksToDocument(blocks: readonly Block[]): ScriptDocument {
+  const flat = normalizeBlocks(blocks).blocks;
+  type Entry = { node: PmNode; column: 'left' | 'right' | undefined };
+  const entries: Entry[] = [];
+
+  for (let i = 0; i < flat.length; ) {
+    const b = flat[i];
+    if (!b) break;
+    if (b.type === 'character') {
+      let j = i + 1;
       const body: PmNode[] = [];
-      for (; j < blocks.length; j++) {
-        const x = blocks[j];
+      for (; j < flat.length; j++) {
+        const x = flat[j];
         if (x?.type !== 'parenthetical' && x?.type !== 'dialogue') break;
         body.push(leaf(x.type, x));
       }
-      if (!body.some((n) => n.type === 'dialogue')) body.push({ type: 'dialogue' });
-      entries.push({
-        node: { type: 'speech', content: [leaf('character', cue), ...body] },
-        column: cue?.column,
-      });
+      entries.push({ node: { type: 'speech', content: [leaf('character', b), ...body] }, column: b.column });
       i = j;
       continue;
     }

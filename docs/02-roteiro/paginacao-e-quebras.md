@@ -656,6 +656,8 @@ A versão 1 (paginador mínimo, sem regras de coesão) não produzia `(MORE)`/`(
 
 **Modelo de entrada.** O motor recebe a lista plana de blocos do `packages/screenplay` (`type`, `text`, `marks?`, `column?`), não a estrutura da seção 2.2. Uma fala é um `character` seguido de `parenthetical`/`dialogue`. Duas falas consecutivas cujos cues têm `column: 'left'` e `column: 'right'` formam um diálogo duplo. Em `marks`, os deslocamentos são índices do texto do bloco; cada linha de saída recebe as marcas com deslocamentos relativos a ela.
 
+**Origem das linhas.** Cada `Line` diz de que bloco veio (`block`, índice na lista de entrada) e em que deslocamento do texto começa (`from`), e as linhas que o motor acrescenta, `(MORE)` e a cue `NOME (CONT'D)`, vêm marcadas com `synthetic`. O editor usa isso para pôr as quebras de página no ponto exato do texto. Esses campos não entram no hash.
+
 **Saída.** Cada linha tem `row` (0 a 53) explícito. As linhas em branco entre blocos não são emitidas, e `rows` é o total de linhas usadas na página. Duas linhas podem dividir a mesma `row` no diálogo duplo; as colunas dos cues são 12,5 e 42,5, em colunas de 0,1 pol.
 
 **Hash.** `layoutHash` é SHA-256 de `profileVersion`, `layoutVersion` e das linhas (`row`, `col`, `type`, `text`, `marks`). `pageSize` e `language` entram quando houver A4 e idioma por roteiro.
