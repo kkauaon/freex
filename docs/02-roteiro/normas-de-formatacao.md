@@ -698,6 +698,14 @@ Um aviso permite exportar após confirmação.
 | `FMT113` | Caixa mista em elemento que deve ser maiúsculo | Auto-corrigir |
 | `FMT114` | Aspas tipográficas em diálogo | Informativo |
 | `FMT115` | Cena sem cabeçalho após transição | Verificar |
+| `FMT116` | Cabeçalho de cena terminado em ponto (seção 5.1) | Remover o ponto |
+| `FMT117` | Parêntese sem parênteses ou terminado em ponto (seção 5.4) | Corrigir |
+| `FMT118` | Personagem terminado em ponto ou dois-pontos (seção 5.3) | Remover |
+| `FMT119` | Transição sem dois-pontos, exceto `FADE OUT.` e `FADE TO BLACK.` (seção 5.6) | Corrigir |
+| `FMT120` | Diálogo inteiro entre aspas (seção 5.5) | Remover as aspas |
+| `FMT121` | Primeira menção, na ação, a um personagem que fala não está em maiúsculas (seção 5.2) | Escrever o nome em maiúsculas |
+
+Os códigos `FMT116` a `FMT121` formalizam regras já normativas nas seções 5.1 a 5.6; a implementação está em `packages/screenplay/src/validate.ts`. `FMT001`, `FMT002`, `FMT009` e `FMT010` dependem de fonte e de PDF e são verificados na exportação, não no validador de blocos.
 
 ### 8.3 Auto-correções permitidas
 

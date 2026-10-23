@@ -439,6 +439,8 @@ O documento é uma árvore. Blocos de fala são agrupados para garantir que pers
 - Marcas inline não alteram a largura.
 - Texto não contém `\n`; quebras são nós.
 
+**Implementação.** `packages/screenplay/src/canonical.ts` converte entre este documento e a lista plana de blocos usada pelo layout (`blocksToDocument`, `documentToBlocks`) e valida as invariantes acima (`validateDocument`). Marcas inline (`bold`, `italic`, `underline`) são marcas dos nós de texto. Ainda não há `extension` em `character` (derivável do texto) nem schema ProseMirror ou Zod.
+
 ### 5.4 Validação
 
 - Schema ProseMirror no cliente e no servidor.

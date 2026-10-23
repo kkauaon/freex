@@ -7,7 +7,7 @@ import {
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import { HealthResponse, PaginateRequest, PaginateResponse } from '@freex/contracts';
-import { paginate } from '@freex/layout';
+import { LAYOUT_VERSION, layoutDocument, layoutHash } from '@freex/layout';
 import { PROFILE_VERSION } from '@freex/screenplay';
 
 export function buildApp() {
@@ -30,8 +30,26 @@ export function buildApp() {
     '/v1/layout/paginate',
     { schema: { body: PaginateRequest, response: { 200: PaginateResponse } } },
     async (req) => {
-      const pages = paginate(req.body.blocks).map((p) => ({ number: p.number, lines: [...p.lines] }));
-      return { profileVersion: PROFILE_VERSION, pageCount: pages.length, pages };
+      const pages = layoutDocument(req.body.blocks, req.body);
+      return {
+        profileVersion: PROFILE_VERSION,
+        layoutVersion: LAYOUT_VERSION,
+        hash: layoutHash(pages),
+        pageCount: pages.length,
+        pages: pages.map((p) => ({
+          number: p.number,
+          kind: p.kind,
+          printedNumber: p.printedNumber,
+          rows: p.rows,
+          lines: p.lines.map((l) => ({
+            type: l.type,
+            row: l.row,
+            col: l.col,
+            text: l.text,
+            ...(l.marks && { marks: [...l.marks] }),
+          })),
+        })),
+      };
     },
   );
 
@@ -39,7 +57,7 @@ export function buildApp() {
   // Concurrency is limited to one render at a time to bound Chromium memory.
   let rendering: Promise<unknown> = Promise.resolve();
   r.post('/v1/export/pdf', { schema: { body: PaginateRequest } }, async (req, reply) => {
-    const pages = paginate(req.body.blocks);
+    const pages = layoutDocument(req.body.blocks, req.body);
     const job = rendering.then(() => renderPdf(pages));
     rendering = job.catch(() => undefined);
     const pdf = await job;

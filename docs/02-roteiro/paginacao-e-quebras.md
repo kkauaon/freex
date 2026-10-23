@@ -645,3 +645,32 @@ O perfil A4 usa 57 caracteres por linha e 58 linhas por página. A paginação �
 - [ ] Hash é estável.
 - [ ] Testes 1–20 passam.
 - [ ] PDF e prévia têm o mesmo número de páginas.
+
+---
+
+## 14. Estado da implementação
+
+**Implementação:** `packages/layout/src/index.ts`, `layoutVersion` **2**. O golden da seção 13 de [`elementos-e-convencoes.md`](elementos-e-convencoes.md) está em `packages/layout/src/golden.test.ts`; os cenários 1–15 e 20 da seção 10 e invariantes sobre roteiros pseudoaleatórios estão em `packages/layout/src/paginate.test.ts`.
+
+A versão 1 (paginador mínimo, sem regras de coesão) não produzia `(MORE)`/`(CONT'D)`. A passagem para a versão 2 não altera nenhuma constante de formatação; por isso o `profileVersion` continua 1.
+
+**Modelo de entrada.** O motor recebe a lista plana de blocos do `packages/screenplay` (`type`, `text`, `marks?`, `column?`), não a estrutura da seção 2.2. Uma fala é um `character` seguido de `parenthetical`/`dialogue`. Duas falas consecutivas cujos cues têm `column: 'left'` e `column: 'right'` formam um diálogo duplo. Em `marks`, os deslocamentos são índices do texto do bloco; cada linha de saída recebe as marcas com deslocamentos relativos a ela.
+
+**Saída.** Cada linha tem `row` (0 a 53) explícito. As linhas em branco entre blocos não são emitidas, e `rows` é o total de linhas usadas na página. Duas linhas podem dividir a mesma `row` no diálogo duplo; as colunas dos cues são 12,5 e 42,5, em colunas de 0,1 pol.
+
+**Hash.** `layoutHash` é SHA-256 de `profileVersion`, `layoutVersion` e das linhas (`row`, `col`, `type`, `text`, `marks`). `pageSize` e `language` entram quando houver A4 e idioma por roteiro.
+
+**Esclarecimentos de regras:**
+
+- O espaço de uma linha em branco entre o cabeçalho de cena e o bloco seguinte conta na regra de coesão da seção 4.4: o cabeçalho só fica se couberem ele, a linha em branco e o início do bloco seguinte. Esse início é: duas linhas de ação (ou o bloco inteiro quando tem menos de 4 linhas, que não pode ser dividido); personagem, parênteses iniciais, duas linhas de diálogo e `(MORE)`; ou o bloco inteiro nos demais casos.
+- Uma ação só é dividida se ficarem pelo menos 2 linhas de cada lado (seção 5.3). No cenário 3 da seção 10, 55 linhas de ação dão 53 + 2, não 54 + 1.
+- Uma fala só é dividida se ficarem pelo menos 2 linhas de diálogo de cada lado, o corte não cair logo depois de um parêntese e `(MORE)` couber. Preferência por fim de frase (`. ! ? … —`).
+- Palavra maior que a coluna é cortada por caractere (seção 7.2); o validador emite `FMT003`.
+- Diálogo duplo mais alto que uma página não é dividido: cai para duas falas sequenciais, para não perder texto. O aviso ao autor ainda não existe.
+
+- Transição que não cabe leva consigo as duas últimas linhas da ação anterior (seção 3.2), desde que essa ação tenha pelo menos 4 linhas na página, para sobrarem 2. Se o bloco anterior não for uma ação, a transição desce sozinha (seção 7.10).
+
+**Página de título e numeração.** `layoutTitlePage` segue a seção 6.2 de [`normas-de-formatacao.md`](normas-de-formatacao.md) e usa meias linhas, porque as distâncias são em polegadas (o topo do título, a 3,25 pol, cai na linha 13,5 do corpo). O título é quebrado em colunas de 50 caracteres. A página de título tem `number` 0 e `kind: 'title'`. Cada página tem `printedNumber`, que é nulo na página de título e na página 1 do roteiro. `layoutDocument` junta título e roteiro e aceita `range`: as páginas mantêm o número original (seção 6.2).
+
+**Ainda não implementado:** páginas A4 (exigem decisão de perfil), lista de cenas e de personagens como front matter, avisos emitidos pelo próprio motor (`FMT107` em corte sem fim de frase, diálogo duplo maior que uma página) e continuação de cena do perfil de produção.
+

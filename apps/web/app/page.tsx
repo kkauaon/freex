@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { paginate } from '@freex/layout';
-import type { Block } from '@freex/screenplay';
+import { pageRows, paginate } from '@freex/layout';
+import { parsePlainText, type Block } from '@freex/screenplay';
 
 const SAMPLE = `INT. SALA - DIA
 
@@ -14,28 +14,8 @@ Tem alguém aqui?
 
 CORTA PARA:`;
 
-// Foundation editor: one block per line, type inferred. Not the ProseMirror editor yet.
-function parse(src: string): Block[] {
-  const out: Block[] = [];
-  let prev: Block['type'] | null = null;
-  for (const raw of src.split('\n')) {
-    const text = raw.trim();
-    if (!text) {
-      prev = null;
-      continue;
-    }
-    let type: Block['type'];
-    if (/^(INT|EXT)[. ]/i.test(text)) type = 'scene-heading';
-    else if (/TO:$/.test(text) || /PARA:$/.test(text)) type = 'transition';
-    else if (/^\(.*\)$/.test(text)) type = 'parenthetical';
-    else if (prev === 'character' || prev === 'parenthetical') type = 'dialogue';
-    else if (text === text.toUpperCase() && prev === null) type = 'character';
-    else type = 'action';
-    out.push({ type, text });
-    prev = type;
-  }
-  return out;
-}
+// Foundation editor: plain text with inferred element types. Not the ProseMirror editor yet.
+const parse = (src: string): Block[] => parsePlainText(src);
 
 export default function Home() {
   const [src, setSrc] = useState(SAMPLE);

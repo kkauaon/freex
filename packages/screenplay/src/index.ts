@@ -1,6 +1,12 @@
 export * from './constants';
-
-export interface Block {
-  readonly type: import('./constants').ElementType;
-  readonly text: string;
-}
+export type { Block, Mark, MarkType } from './block';
+export * from './marks';
+export * from './canonical';
+export * from './document';
+export * from './elements';
+export * from './fountain';
+export * from './outline';
+export * from './parse';
+export * from './text';
+export * from './validate';
+export * from './vocabulary';

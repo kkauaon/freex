@@ -18,6 +18,12 @@ describe('layoutBlock', () => {
     const t = layoutBlock({ type: 'transition', text: 'CORTA PARA:' })[0];
     expect(t && t.col + t.text.length).toBe(60);
   });
+
+  it('keeps FADE IN: on the left margin and right-aligns the other fades', () => {
+    expect(layoutBlock({ type: 'transition', text: 'FADE IN:' })[0]?.col).toBe(0);
+    const out = layoutBlock({ type: 'transition', text: 'FADE OUT.' })[0];
+    expect(out && out.col + out.text.length).toBe(60);
+  });
 });
 
 describe('paginate', () => {

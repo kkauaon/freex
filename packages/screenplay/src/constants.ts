@@ -31,7 +31,8 @@ export type ElementType =
   | 'character'
   | 'parenthetical'
   | 'dialogue'
-  | 'transition';
+  | 'transition'
+  | 'shot';
 
 export interface ElementBox {
   /** Offset from the left edge of the text area, in columns. */
@@ -53,6 +54,43 @@ export const ELEMENT_BOX: Readonly<Record<ElementType, ElementBox>> = {
   dialogue: { indent: 10, width: 35, align: 'left' },
   // right aligned at 7.5 in => right edge of the 6.0 in text area
   transition: { indent: 0, width: 60, align: 'right' },
+  // normas-de-formatacao.md 5.7: a shot uses the action geometry
+  shot: { indent: 0, width: 60, align: 'left' },
 };
 
+/**
+ * Dual dialogue columns (normas-de-formatacao.md 5.8), offsets from the text area.
+ * Character cues sit on half columns (2.75 in and 5.75 in from the page edge).
+ */
+export const DUAL_DIALOGUE_BOX = {
+  left: {
+    character: { indent: 12.5 },
+    parenthetical: { indent: 7.5, width: 17.5 },
+    dialogue: { indent: 5, width: 25 },
+  },
+  right: {
+    character: { indent: 42.5 },
+    parenthetical: { indent: 37.5, width: 20 },
+    dialogue: { indent: 35, width: 25 },
+  },
+} as const;
+
+/** Title page (normas-de-formatacao.md 6.2). Distances are from the top of the page. */
+export const TITLE_PAGE = {
+  /** Top of the title block. */
+  titleTopIn: 3.25,
+  /** Horizontal centre of the title block; 0.25 in right of the geometric centre. */
+  centerIn: 4.5,
+  /** Top of the last contact line. */
+  contactLastLineIn: 9.5,
+  maxTitleLines: 3,
+} as const;
+
 export const BLANK_LINES_BETWEEN_BLOCKS = 1;
+
+/** Character cue and parenthetical lengths that trigger warnings (FMT104, FMT105). */
+export const MAX_CHARACTER_CUE_LENGTH = 22;
+export const MAX_PARENTHETICAL_LENGTH = 20;
+/** Line limits that trigger warnings (FMT106, FMT107) and the scene heading width (FMT101). */
+export const MAX_ACTION_PARAGRAPH_LINES = 4;
+export const MAX_DIALOGUE_LINES = 10;
