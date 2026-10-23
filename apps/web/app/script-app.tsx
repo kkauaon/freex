@@ -142,6 +142,8 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
   const [synced, setSynced] = useState(false);
   const [connection, setConnection] = useState<'connecting' | 'online' | 'offline' | 'denied'>('connecting');
   const [unsynced, setUnsynced] = useState(0);
+  const [wasOnline, setWasOnline] = useState(false);
+  const [browserOffline, setBrowserOffline] = useState(false);
   const [people, setPeople] = useState<Person[]>([]);
   const [contributors, setContributors] = useState<Contributor[]>([]);
   const [name, setName] = useState('');
@@ -217,6 +219,18 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
+  useEffect(() => {
+    if (!share) return;
+    const sync = () => setBrowserOffline(!navigator.onLine);
+    sync();
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    return () => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('offline', sync);
+    };
+  }, [share]);
+
   // ---- the room: connect, and follow the people, the cover and who edited
   useEffect(() => {
     if (!share) return;
@@ -224,9 +238,12 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
     setSession(s);
     setSynced(false);
     setConnection('connecting');
+    setWasOnline(false);
 
-    const onStatus = ({ status }: { status: string }) =>
+    const onStatus = ({ status }: { status: string }) => {
+      if (status === 'connected') setWasOnline(true);
       setConnection(status === 'connected' ? 'online' : status === 'connecting' ? 'connecting' : 'offline');
+    };
     const onSynced = () => setSynced(true);
     const onDenied = () => setConnection('denied');
     const onUnsynced = ({ number }: { number: number }) => setUnsynced(number);
@@ -497,6 +514,20 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
         ['help', 'Atalhos'],
       ];
 
+  // reconnect attempts report 'connecting' too, so after the first connection anything but online is a loss
+  const connectionLost =
+    !!share &&
+    connection !== 'denied' &&
+    (connection === 'offline' || browserOffline || (wasOnline && connection !== 'online'));
+
+  // leaving while offline would lose what was written since the connection dropped
+  useEffect(() => {
+    if (!connectionLost) return;
+    const guard = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [connectionLost]);
+
   const connectionLabel =
     connection === 'denied'
       ? 'Link inválido'
@@ -511,6 +542,12 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
   return (
     <>
     <div className="shell" data-view={current} inert={modal !== null}>
+      {connectionLost && (
+        <div className="offline-banner" role="alert">
+          <strong>Sem conexão.</strong> As alterações não estão sendo salvas. Não saia desta página: ao voltar a
+          conexão, o que você escreveu é enviado.
+        </div>
+      )}
       <header className="topbar">
         <a className="brand" href="/" aria-label="FREEX — voltar aos recentes">
           FREEX

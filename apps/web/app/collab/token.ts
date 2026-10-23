@@ -1,4 +1,5 @@
 import { SHARE_TOKEN_PATTERN } from '@freex/contracts';
+import { sha256 } from './sha256';
 
 /** The share token as it appears in a link: `/s#<token>`. The fragment never reaches a server. */
 export function tokenFromHash(hash: string): string | null {
@@ -12,8 +13,11 @@ export function tokenFromHash(hash: string): string | null {
  */
 export async function docIdOf(token: string): Promise<string> {
   const bytes = new TextEncoder().encode(token);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+  // crypto.subtle only exists in secure contexts (HTTPS, localhost)
+  const digest = globalThis.crypto?.subtle
+    ? new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
+    : sha256(bytes);
+  return Array.from(digest,(b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 export function shareLink(origin: string, token: string): string {

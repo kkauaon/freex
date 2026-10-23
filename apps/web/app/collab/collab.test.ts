@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
+import { sha256 } from './sha256';
 import { docIdOf, shareLink, tokenFromHash } from './token';
 import {
   MAX_CONTRIBUTORS,
@@ -29,6 +30,16 @@ describe('share token', () => {
     const id = await docIdOf(TOKEN);
     expect(id).toMatch(/^[0-9a-f]{64}$/);
     expect(id).not.toContain(TOKEN);
+  });
+
+  it('the plain-JS SHA-256 fallback (used over HTTP) matches node:crypto', async () => {
+    const { createHash } = await import('node:crypto');
+    for (const len of [0, 1, 43, 55, 56, 63, 64, 65, 200]) {
+      const bytes = new Uint8Array(len).map((_, i) => (i * 7 + 3) % 256);
+      const expected = createHash('sha256').update(bytes).digest('hex');
+      const got = Array.from(sha256(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
+      expect(got).toBe(expected);
+    }
   });
 
   it('builds a link that keeps the secret in the fragment', () => {

@@ -438,7 +438,8 @@ export function tab(shift: boolean): Command {
 
 /** `Backspace` at the start of a block: merge with the previous block or reset to action. */
 export const backspace: Command = (state, dispatch, view) => {
-  if (view?.composing) return true;
+  // while an IME is composing (mobile keyboards, most of the time) the keyboard deletes by itself
+  if (view?.composing) return false;
   const sel = state.selection;
   if (!sel.empty || !(sel instanceof TextSelection) || sel.$from.parentOffset !== 0) return false;
   return runEdit(state, dispatch, ({ blocks, head }) => {
@@ -472,7 +473,7 @@ export const backspace: Command = (state, dispatch, view) => {
 
 /** `Delete` at the end of a block: pull the next block into this one. */
 export const deleteForward: Command = (state, dispatch, view) => {
-  if (view?.composing) return true;
+  if (view?.composing) return false;
   const sel = state.selection;
   if (!sel.empty || !(sel instanceof TextSelection)) return false;
   if (sel.$from.parentOffset !== sel.$from.parent.content.size) return false;

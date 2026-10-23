@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EditorState, TextSelection, type Command } from 'prosemirror-state';
 import { ReplaceStep } from 'prosemirror-transform';
+import type { EditorView } from 'prosemirror-view';
 import {
   blocksToDocument,
   documentToBlocks,
@@ -302,6 +303,21 @@ describe('Backspace and Delete', () => {
   it('at the very start of the script it is a no-op', () => {
     const r = run(backspace, stateFor([B('action', 'Ana')], 0, 0));
     expect(r.blocks).toEqual([B('action', 'Ana')]);
+  });
+
+  it('while an IME is composing they leave the key to the keyboard (mobile)', () => {
+    const composing = { composing: true } as unknown as EditorView;
+    let dispatched = false;
+    const dispatch = () => {
+      dispatched = true;
+    };
+    const mid = stateFor([B('action', 'Ana')], 0, 2);
+    expect(backspace(mid, dispatch, composing)).toBe(false);
+    expect(deleteForward(mid, dispatch, composing)).toBe(false);
+    // even where they would merge blocks, nothing is swallowed or changed
+    const start = stateFor([B('action', 'Ana'), B('action', ' entra')], 1, 0);
+    expect(backspace(start, dispatch, composing)).toBe(false);
+    expect(dispatched).toBe(false);
   });
 
   it('Delete at the end pulls the next block in', () => {
