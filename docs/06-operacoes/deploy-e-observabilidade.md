@@ -3,6 +3,8 @@
 **Status:** proposta para revisão antes do beta
 **Relaciona-se com:** [`../03-arquitetura/arquitetura-geral.md`](../03-arquitetura/arquitetura-geral.md), [`../03-arquitetura/seguranca-e-privacidade.md`](../03-arquitetura/seguranca-e-privacidade.md), [`../01-requisitos/srs.md`](../01-requisitos/srs.md)
 
+**Fase 1 (uma VPS, sem contêineres):** [`deploy-vps.md`](deploy-vps.md).
+
 ---
 
 ## 1. Objetivo

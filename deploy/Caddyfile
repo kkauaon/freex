@@ -1,0 +1,18 @@
+# Reverse proxy with automatic HTTPS. Replace the three names with your domain and point their
+# DNS records at the VPS. Caddy appends the client address to X-Forwarded-For, which the
+# collaboration service reads when TRUST_PROXY=true (docs/06-operacoes/deploy-vps.md).
+
+app.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
+
+collab.example.com {
+	# WebSocket upgrades pass through reverse_proxy without extra settings.
+	reverse_proxy 127.0.0.1:3002
+}
+
+api.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3001
+}

@@ -184,9 +184,12 @@ Enquanto não há contas (FR-COL-016), o único controle de acesso a um roteiro 
 | Vazamento do link por log ou `Referer` | O token vai no fragmento (`/s#token`), que o navegador não envia a nenhum servidor; a página usa `referrer: no-referrer` e `noindex`; o token não entra em log nem em URL de WebSocket |
 | Qualquer pessoa com o link edita | É o efeito pretendido. O link é apresentado como uma senha; **não há revogação nem validade** (decisão aberta em `docs/README.md`) |
 | Abuso na criação | Limite de 10 links por minuto por endereço; corpo de até 3 MB, validado com Zod |
+| Limites por endereço atrás de proxy | Com `TRUST_PROXY=true` o serviço usa o último valor de `X-Forwarded-For`, só se a conexão vier de loopback; sem a variável o cabeçalho é ignorado, então um cliente não escapa do limite forjando-o |
 | Abuso no WebSocket | Mensagem de até 1 MB, 100 mensagens/s por conexão, 50 conexões por sala, 60 por endereço, ping a cada 30 s, verificação de `Origin` |
 | Nome falso ou ofensivo | O nome não é autenticado. É limpo no servidor e no cliente (normalização Unicode, sem controle, sem bidi, 30 caracteres) e mostrado sempre como texto, nunca como HTML |
 | Cor da presença como vetor de CSS | Só `#rrggbb` passa; qualquer outro valor vira cinza |
+
+A lista de recentes da tela inicial guarda, no `localStorage` do navegador, o **token** de cada roteiro compartilhado aberto (para reabri-lo sem o link), com o título e as datas; ela é validada ao ler (formato do token e do `docId`) e limitada a 20 entradas. Isso põe o token ao alcance de qualquer script que rode na origem da página (XSS), como já acontece com o fragmento da URL enquanto a página está aberta; por isso o CSP e a regra de nunca renderizar HTML vindo do roteiro valem também aqui. "Tirar da lista" apaga a entrada.
 
 O nome é dado pessoal informado livremente. Ele fica no navegador (`localStorage`), na presença (efêmera) e no mapa "quem editou" dentro do próprio documento, sem prazo de retenção definido.
 

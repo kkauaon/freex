@@ -168,6 +168,12 @@ describe('loadConfig', () => {
     expect(c.maxConnectionsPerDoc).toBe(50);
     expect(c.messagesPerSecond).toBe(100);
     expect(loadConfig({}).allowedOrigins).toEqual(['http://localhost:3000']);
+    expect(loadConfig({}).trustProxy).toBe(false);
+    expect(loadConfig({ TRUST_PROXY: 'true' }).trustProxy).toBe(true);
+  });
+
+  it('rejects a trust-proxy value that is not true or false', () => {
+    expect(() => loadConfig({ TRUST_PROXY: 'yes' })).toThrow();
   });
 
   it('rejects a port that is not a port', () => {

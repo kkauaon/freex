@@ -34,7 +34,7 @@ export default function SharedScript() {
         <h1>Link inválido</h1>
         <p>Este endereço não tem a chave de um roteiro. Confira se o link foi copiado por inteiro.</p>
         <a className="btn primary" href="/">
-          Abrir o editor
+          Ir para os recentes
         </a>
       </main>
     );

@@ -1,0 +1,19 @@
+[Unit]
+Description=FREEX collaboration service
+After=network.target
+
+[Service]
+User=freex
+WorkingDirectory=/srv/freex
+EnvironmentFile=/etc/freex/collab.env
+ExecStart=/usr/bin/env pnpm --filter @freex/collab start
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/freex
+
+[Install]
+WantedBy=multi-user.target

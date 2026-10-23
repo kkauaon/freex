@@ -60,6 +60,7 @@ Para operar e lançar:
 | `04-design/ux-e-interface.md` | Normativo | Arquitetura de informação, telas, atalhos, acessibilidade |
 | `05-qualidade/testes-e-aceite.md` | Normativo | Estratégia de testes, fixtures, gates, aceite |
 | `06-operacoes/deploy-e-observabilidade.md` | Normativo | Ambientes, CI/CD, SLOs, backups, runbooks |
+| `06-operacoes/deploy-vps.md` | Rascunho | Roteiro manual de deploy em uma VPS (fase 1) |
 | `07-roadmap/roadmap.md` | Informativo | Fases, dependências, riscos, decisões abertas |
 | `08-glossario.md` | Informativo | Vocabulário de roteiro e de engenharia |
 

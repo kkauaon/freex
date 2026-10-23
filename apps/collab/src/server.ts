@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Server } from '@hocuspocus/server';
 import * as Y from 'yjs';
 import { CreateShareRequest, encodeSavedNotice, sanitizeParticipantName } from '@freex/contracts';
+import { clientIp } from './client-ip';
 import type { CollabConfig } from './config';
 import { RateLimiter } from './rate-limit';
 import { buildShareState } from './share';
@@ -80,7 +81,7 @@ export function createCollabServer(config: CollabConfig, options: CollabServerOp
   async function createShare(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const headers = cors(req);
     if (!originAllowed(req.headers.origin)) return sendJson(res, 403, { error: 'origin not allowed' }, headers);
-    const ip = req.socket.remoteAddress ?? 'unknown';
+    const ip = clientIp(req, config.trustProxy);
     if (!createLimit.hit(ip)) return sendJson(res, 429, { error: 'too many requests' }, { ...headers, 'retry-after': '60' });
     if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) {
       return sendJson(res, 415, { error: 'expected application/json' }, headers);
@@ -146,7 +147,7 @@ export function createCollabServer(config: CollabConfig, options: CollabServerOp
         return Promise.reject();
       };
       if (!originAllowed(request.headers.origin)) return reject('403 Forbidden');
-      const ip = request.socket.remoteAddress ?? 'unknown';
+      const ip = clientIp(request, config.trustProxy);
       const open = connectionsPerIp.get(ip) ?? 0;
       if (open >= config.maxConnectionsPerIp) return reject('429 Too Many Requests');
       connectionsPerIp.set(ip, open + 1);

@@ -101,7 +101,7 @@ try {
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
-  await page.goto(BASE_URL);
+  await page.goto(`${BASE_URL}/draft`);
   await page.evaluate(
     ([blocks, cover]) => localStorage.setItem('freex:draft:v2', JSON.stringify({ version: 2, blocks, cover })),
     [script(), COVER],

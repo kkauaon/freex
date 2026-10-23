@@ -11,6 +11,8 @@ const Env = z.object({
   MAX_CONNECTIONS_PER_IP: z.coerce.number().int().positive().default(60),
   MESSAGES_PER_SECOND: z.coerce.number().int().positive().default(100),
   CREATE_PER_MINUTE: z.coerce.number().int().positive().default(10),
+  /** `true` behind a reverse proxy on the same machine: the client address comes from X-Forwarded-For. */
+  TRUST_PROXY: z.enum(['true', 'false']).default('false'),
 });
 
 export interface CollabConfig {
@@ -22,6 +24,7 @@ export interface CollabConfig {
   readonly maxConnectionsPerIp: number;
   readonly messagesPerSecond: number;
   readonly createPerMinute: number;
+  readonly trustProxy: boolean;
   /** Largest WebSocket message (docs/03-arquitetura/colaboracao-tempo-real.md 4.3). */
   readonly maxMessageBytes: number;
   /** Largest body of `POST /v1/shares`. */
@@ -43,6 +46,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CollabConfig {
     maxConnectionsPerIp: e.MAX_CONNECTIONS_PER_IP,
     messagesPerSecond: e.MESSAGES_PER_SECOND,
     createPerMinute: e.CREATE_PER_MINUTE,
+    trustProxy: e.TRUST_PROXY === 'true',
     maxMessageBytes: 1_048_576,
     maxBodyBytes: 3 * 1_048_576,
     storeDebounceMs: 2_000,

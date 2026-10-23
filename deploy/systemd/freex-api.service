@@ -1,0 +1,16 @@
+[Unit]
+Description=FREEX API (PDF export)
+After=network.target
+
+[Service]
+User=freex
+WorkingDirectory=/srv/freex
+EnvironmentFile=/etc/freex/api.env
+ExecStart=/usr/bin/env pnpm --filter @freex/api start
+Restart=always
+RestartSec=3
+PrivateTmp=true
+# Chromium starts its own sandbox, so NoNewPrivileges and ProtectSystem are not set here.
+
+[Install]
+WantedBy=multi-user.target

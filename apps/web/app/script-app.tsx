@@ -24,6 +24,7 @@ import {
 } from './editor-model';
 import { parseSavedNotice, sanitizeParticipantName } from '@freex/contracts';
 import { savedLabel } from './saved';
+import { changeRecents, noteDraftOpened, noteSharedOpened, updateShared } from './recents';
 import { NameDialog, PeoplePanel, ShareDialog } from './collab/dialogs';
 import {
   colorFor,
@@ -152,6 +153,8 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
   // the last modification that was saved: by the service for a shared script, by this browser otherwise
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const lastSaved = useRef('');
+  // "Salvando…" only when the send is slow: every key stroke is briefly unsynced
+  const [slowSync, setSlowSync] = useState(false);
   const ready = share ? session !== null : localReady;
 
   // ---- start: the saved draft, the old Fountain draft, or the sample
@@ -174,6 +177,20 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
     lastSaved.current = draft ? JSON.stringify({ blocks: draft.blocks, cover: draft.cover }) : '';
     setLocalReady(true);
   }, [share]);
+
+  // the home screen lists what was opened lately
+  useEffect(() => {
+    if (share) changeRecents((r) => noteSharedOpened(r, share, Date.now()));
+    else changeRecents((r) => noteDraftOpened(r, Date.now()));
+  }, [share]);
+
+  useEffect(() => {
+    if (share) changeRecents((r) => updateShared(r, share.docId, { title: cover.title }));
+  }, [share, cover.title]);
+
+  useEffect(() => {
+    if (share && savedAt !== null) changeRecents((r) => updateShared(r, share.docId, { savedAt }));
+  }, [share, savedAt]);
 
   // a shared script is not copied to this browser: the room keeps it
   useEffect(() => {
@@ -266,6 +283,15 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
     }
     setNameLoaded(true);
   }, [share]);
+
+  useEffect(() => {
+    if (unsynced === 0) {
+      setSlowSync(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setSlowSync(true), 1500);
+    return () => window.clearTimeout(timer);
+  }, [unsynced]);
 
   // "edited 2 min ago" and the saved time move on by themselves
   useEffect(() => {
@@ -486,7 +512,9 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
     <>
     <div className="shell" data-view={current} inert={modal !== null}>
       <header className="topbar">
-        <span className="brand">FREEX</span>
+        <a className="brand" href="/" aria-label="FREEX — voltar aos recentes">
+          FREEX
+        </a>
         <button type="button" className="doc-title" onClick={() => toggleSide('cover')}>
           <strong>{title || 'Sem título'}</strong>
           <span className="sr-only"> — editar a capa</span>
@@ -683,7 +711,7 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
                   <h2>Este link não abre nenhum roteiro</h2>
                   <p>Confira se o link foi copiado por inteiro. Quem criou o roteiro pode compartilhar de novo.</p>
                   <a className="btn primary" href="/">
-                    Abrir o editor
+                    Ir para os recentes
                   </a>
                 </div>
               ) : ready ? (
@@ -721,12 +749,12 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
             <span>{analysis.scriptPages} pág.</span>
             <span>{analysis.words} palavras</span>
             <span>{analysis.characters} caracteres</span>
-            {savedAt !== null && (!share || unsynced === 0) && (
+            {savedAt !== null && (!share || !slowSync) && (
               <span className="saved-at" title={new Date(savedAt).toLocaleString('pt-BR')}>
                 {savedLabel(savedAt, now, share ? 'server' : 'browser')}
               </span>
             )}
-            {share && unsynced > 0 && <span className="saved-at">Salvando…</span>}
+            {share && slowSync && <span className="saved-at">Salvando…</span>}
             {share && (
               <span className={`conn-text conn-${connection}`} role="status">
                 {connectionLabel}

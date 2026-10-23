@@ -89,6 +89,8 @@ Ações: abrir, renomear, arquivar, duplicar, excluir. A busca filtra por títul
 
 Estado vazio: uma frase curta e um único botão "Criar projeto". Sem ilustração gigante.
 
+**Implementação atual (sem contas nem projetos).** A raiz `/` é uma lista de **Recentes** guardada só no navegador: o rascunho local (`/draft`) e os roteiros compartilhados abertos (`/s#chave`), do mais recente ao mais antigo (no máximo 20 compartilhados). Cada linha mostra o título da capa, quando foi aberta e um ícone: **pessoas** (azul) para roteiro compartilhado, **folha** para o rascunho. Um compartilhado pode ser "tirado da lista", o que não o apaga: quem tem o link continua editando. O rascunho está sempre na lista. O logotipo FREEX, no editor, volta aos recentes. Abrir `/` não carrega o editor.
+
 ### 4.3 Visão do projeto
 
 - Cabeçalho com título, membros e botão "Novo roteiro".

@@ -167,6 +167,22 @@ describe('creating a share', () => {
     expect(statuses).toEqual([201, 201, 201, 429, 429]);
   });
 
+  it('behind a trusted proxy the limit counts each forwarded address, not the proxy', async () => {
+    const { port } = await start({ createPerMinute: 2, trustProxy: true });
+    const from = (ip: string) => post(port, BODY, { 'x-forwarded-for': ip }).then((r) => r.status);
+    expect([await from('198.51.100.1'), await from('198.51.100.1'), await from('198.51.100.1')]).toEqual([201, 201, 429]);
+    expect(await from('198.51.100.2')).toBe(201);
+  });
+
+  it('without a trusted proxy the header is ignored, so it cannot be used to dodge the limit', async () => {
+    const { port } = await start({ createPerMinute: 2 });
+    const statuses: number[] = [];
+    for (const ip of ['198.51.100.1', '198.51.100.2', '198.51.100.3']) {
+      statuses.push((await post(port, BODY, { 'x-forwarded-for': ip })).status);
+    }
+    expect(statuses).toEqual([201, 201, 429]);
+  });
+
   it('only the web app may call it from a browser', async () => {
     const { port } = await start();
     const evil = await post(port, BODY, { origin: 'https://evil.example' });

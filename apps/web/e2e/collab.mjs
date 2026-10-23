@@ -56,7 +56,7 @@ try {
   const ctxA = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const ana = await ctxA.newPage();
   watch(ana, 'ana');
-  await ana.goto(BASE_URL);
+  await ana.goto(`${BASE_URL}/draft`);
   await ana.evaluate(() => localStorage.clear());
   await ana.reload();
   await ana.waitForSelector('.ProseMirror p');
@@ -241,6 +241,27 @@ try {
   await ana.click('.people');
   const tabs = await ana.$$eval('#panel-people .people-list:first-of-type li .person-tabs', (l) => l.map((x) => x.textContent));
   check('the panel says she has 2 tabs', tabs.some((t) => /2 abas/.test(t ?? '')), tabs);
+
+  // ---------------------------------------------------------------- the home screen
+  const home = await ctxA.newPage();
+  watch(home, 'home');
+  await home.goto(BASE_URL);
+  await home.waitForSelector('.home-item');
+  const rows = await home.$$eval('.home-item', (l) =>
+    l.map((e) => ({ title: e.querySelector('strong')?.textContent, shared: !!e.querySelector('.home-icon.shared'), href: e.querySelector('a')?.getAttribute('href') })),
+  );
+  check('home lists the shared script and the draft', rows.length === 2, rows);
+  const sharedRow = rows.find((r) => r.shared);
+  check('the shared one has the shared icon, the cover title and its link', sharedRow?.title === 'Casa Compartilhada' && sharedRow.href === new URL(url).hash.replace(/^/, '/s'), rows);
+  check('the draft is listed without the shared icon and opens /draft', rows.some((r) => !r.shared && r.href === '/draft'), rows);
+  await home.click('.home-link[href^="/s#"]');
+  await home.waitForSelector('.ProseMirror [data-element]');
+  check('opening a shared one from home goes to the room', /\/s#/.test(home.url()));
+  await home.goto(BASE_URL);
+  await home.waitForSelector('.home-item');
+  await home.click('.home-item:has(.home-icon.shared) button');
+  await waitFor(async () => (await home.$$('.home-item')).length === 1, 4000, 'forgotten');
+  check('"Tirar da lista" removes only the shared one', (await home.$$('.home-item .home-icon.shared')).length === 0);
   void token;
 } catch (error) {
   check('the scenario ran to the end', false, String(error));
