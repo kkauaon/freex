@@ -154,6 +154,17 @@ describe('parseFountain', () => {
     expect(doc.issues).toEqual([]);
   });
 
+  it('maps every block to the source line where its element starts', () => {
+    const doc = parseFountain(SCRIPT);
+    expect(doc.lines).toHaveLength(doc.blocks.length);
+    // line 7 (index 6) is the heading; the speech starts at the cue line
+    expect(doc.lines[0]).toBe(6);
+    expect(doc.lines[2]).toBe(doc.lines[3]);
+    const sourceLines = SCRIPT.split('\n');
+    expect(sourceLines[doc.lines[2] ?? 0]).toBe('ANA');
+    expect(sourceLines[doc.lines[7] ?? 0]).toBe('> FADE OUT.');
+  });
+
   it('turns ^ into dual dialogue columns', () => {
     const doc = parseFountain('ANA\nEu vou.\n\nJOÃO ^\nEu fico.\n');
     expect(doc.blocks.map((b) => [b.type, b.column])).toEqual([
@@ -202,7 +213,7 @@ describe('parseFountain', () => {
   });
 
   it('empty input', () => {
-    expect(parseFountain('')).toEqual({ blocks: [], titlePage: null, issues: [] });
+    expect(parseFountain('')).toEqual({ blocks: [], titlePage: null, issues: [], lines: [] });
   });
 });
 

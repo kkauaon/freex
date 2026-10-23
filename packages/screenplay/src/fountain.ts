@@ -22,6 +22,8 @@ export interface FountainDocument {
   readonly blocks: Block[];
   readonly titlePage: TitlePage | null;
   readonly issues: FountainIssue[];
+  /** `lines[i]` is the 0-based source line where the element of `blocks[i]` starts. */
+  readonly lines: number[];
 }
 
 // ---------------------------------------------------------------- emphasis
@@ -249,6 +251,7 @@ export function parseFountain(source: string): FountainDocument {
   const isBlankAt = (k: number) => k < 0 || k >= lines.length || (lines[k] ?? '').trim() === '';
 
   const blocks: Block[] = [];
+  const starts: number[] = [];
   const tidy = (s: string) => s.replace(/\s+/g, ' ').trim();
   const emphasised = (type: Block['type'], raw: string, column?: 'left' | 'right'): Block => {
     const p = parseEmphasis(tidy(raw));
@@ -345,10 +348,11 @@ export function parseFountain(source: string): FountainDocument {
     } else {
       consumedTo = paragraph(i);
     }
+    while (starts.length < blocks.length) starts.push(i);
     i = Math.max(consumedTo, i + 1);
   }
 
-  return { blocks, titlePage: page, issues: issues.sort((a, b) => a.line - b.line) };
+  return { blocks, titlePage: page, issues: issues.sort((a, b) => a.line - b.line), lines: starts };
 }
 
 function stripSceneNumber(text: string, line: number, issues: FountainIssue[]): string {
