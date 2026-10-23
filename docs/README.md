@@ -128,6 +128,7 @@ As decisões abaixo ainda não foram tomadas. Elas estão registradas aqui para 
 | Revisões de produção | Números de cena e cores de revisão no lançamento | Escopo e complexidade do editor |
 | IA | Assistente de escrita e/ou análise | Produto, custo, privacidade |
 | Licença do código | Antes do beta | Distribuição e contribuição |
+| Links de edição sem conta | Prazo de validade, revogação e retenção dos roteiros compartilhados; hoje o link vale para sempre e nada é apagado | Privacidade, custo de armazenamento, abuso |
 
 ## 9. Glossário
 

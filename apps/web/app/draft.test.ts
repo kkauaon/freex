@@ -16,6 +16,14 @@ describe('draft', () => {
     expect(parseDraft(serializeDraft(blocks, cover))).toEqual({ version: 2, blocks, cover });
   });
 
+  it('keeps the time of the last save, and ignores one that makes no sense', () => {
+    expect(parseDraft(serializeDraft([], EMPTY_COVER, 1_760_000_000_000))?.savedAt).toBe(1_760_000_000_000);
+    expect(parseDraft(serializeDraft([], EMPTY_COVER))?.savedAt).toBeUndefined();
+    for (const bad of ['"ontem"', '-5', '0', 'null']) {
+      expect(parseDraft(`{"version":2,"blocks":[],"savedAt":${bad}}`)?.savedAt).toBeUndefined();
+    }
+  });
+
   it('reads nothing from missing, broken or foreign data', () => {
     expect(parseDraft(null)).toBeNull();
     expect(parseDraft('not json')).toBeNull();

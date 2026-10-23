@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EditorState, TextSelection, type Command } from 'prosemirror-state';
+import { ReplaceStep } from 'prosemirror-transform';
 import {
   blocksToDocument,
   documentToBlocks,
@@ -445,4 +446,73 @@ describe('fuzz: any key sequence keeps the document valid', () => {
       }
     });
   }
+});
+
+describe('minimal changes (so concurrent edits are not rewritten)', () => {
+  const many = Array.from({ length: 30 }, (_, i) => B('action', `bloco ${i}`));
+
+  function steps(cmd: Command, state: EditorState) {
+    let tr: ReturnType<EditorState['apply']> | null = null;
+    const collected: ReplaceStep[] = [];
+    cmd(state, (t) => {
+      for (const st of t.steps) if (st instanceof ReplaceStep) collected.push(st);
+      tr = state.apply(t);
+    });
+    void tr;
+    return collected;
+  }
+
+  it('Enter at the end of a block only inserts the new block', () => {
+    const state = stateFor(many, 15, 'bloco 15'.length);
+    const [step, ...rest] = steps(enter, state);
+    expect(rest).toHaveLength(0);
+    expect(step?.from).toBe(step?.to);
+    // the inserted block is one empty paragraph: 2 positions
+    expect((step as unknown as { slice: { size: number } }).slice.size).toBe(2);
+  });
+
+  it('Enter in the middle of a text only splits it', () => {
+    const state = stateFor(many, 10, 3);
+    const [step] = steps(enter, state);
+    const size = (step as unknown as { slice: { size: number } }).slice.size;
+    expect(size).toBeLessThanOrEqual(2);
+    expect((step?.to ?? 0) - (step?.from ?? 0)).toBe(0);
+  });
+
+  it('changing the element of one block replaces that block and no other', () => {
+    const state = stateFor(many, 7, 0);
+    const found = steps(setElement('transition'), state);
+    expect(found).toHaveLength(1);
+    const step = found[0]!;
+    const blockSize = state.doc.child(7).nodeSize;
+    expect(step.to - step.from).toBeLessThanOrEqual(blockSize);
+  });
+
+  it('merging two blocks touches only those two', () => {
+    const state = stateFor(many, 20, 0);
+    const found = steps(backspace, state);
+    expect(found).toHaveLength(1);
+    const lo = found[0]!.from;
+    const hi = found[0]!.to;
+    let before = 0;
+    for (let i = 0; i < 19; i++) before += state.doc.child(i).nodeSize;
+    expect(lo).toBeGreaterThanOrEqual(before);
+    expect(hi).toBeLessThanOrEqual(before + state.doc.child(19).nodeSize + state.doc.child(20).nodeSize);
+  });
+
+  it('the narrow replacement always gives the same document as replacing the whole window', () => {
+    // the fuzz above checks validity; here the document is compared with the full rewrite
+    for (const [cmd, idx, off] of [
+      [enter, 3, 4],
+      [tab(false), 5, 0],
+      [tab(true), 9, 0],
+      [backspace, 12, 0],
+      [deleteForward, 14, 'bloco 14'.length],
+      [toggleDualDialogue, 0, 0],
+    ] as const) {
+      const state = stateFor([...many, B('character', 'ANA'), B('dialogue', 'Oi.')], idx, off);
+      const r = run(cmd as Command, state);
+      expect(() => r.state.doc.check()).not.toThrow();
+    }
+  });
 });

@@ -168,6 +168,7 @@ Prioridades: **M** = obrigatório no MVP, **S** = deveria, **C** = poderia, **W*
 | FR-COL-013 | Desfazer colaborativo | S | Desfazer por usuário, sem desfazer edições de terceiros |
 | FR-COL-014 | Limite de editores | M | 50 conexões simultâneas por roteiro; excedente recebe modo leitura |
 | FR-COL-015 | Reconexão automática | M | Backoff exponencial com jitter; sem perda de edições locais |
+| FR-COL-016 | Link de edição sem conta | M | Decisão de produto de 2026-10-23, antes das contas: o botão Compartilhar cria um link com chave de 256 bits e qualquer pessoa com o link edita o mesmo roteiro ao mesmo tempo. Antes de editar, a pessoa informa um nome (até 30 caracteres), que aparece junto do cursor e na lista de quem editou. O nome identifica, não autentica: quem tem o link edita |
 
 ### 5.6 Comentários
 

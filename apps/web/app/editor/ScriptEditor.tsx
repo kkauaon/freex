@@ -8,6 +8,18 @@ import { EditorState, Plugin, Selection, type Command } from 'prosemirror-state'
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import 'prosemirror-view/style/prosemirror.css';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import type { Awareness } from 'y-protocols/awareness';
+import {
+  redoCommand,
+  undoCommand,
+  yCursorPlugin,
+  ySyncPlugin,
+  ySyncPluginKey,
+  yUndoPlugin,
+  yUndoPluginKey,
+} from 'y-prosemirror';
+import type * as Y from 'yjs';
+import { COLLAB_TYPES } from '@freex/contracts';
 import { paginate, type Page } from '@freex/layout';
 import {
   blocksToDocument,
@@ -35,12 +47,21 @@ import {
   toggleUnderline,
   type SelectionInfo,
 } from './commands';
+import { awarenessStateFilter, cursorBuilder, selectionBuilder } from './collabCursors';
 import { SHEET_W, buildPageDecorations, pageDecorations, pageDecorationsKey } from './pageBreaks';
 
 /** Below this width the editor drops the page geometry and writes in a single column. */
 export const LINEAR_BELOW_PX = 640;
 /** On wide windows the sheet grows up to this factor, so the text is easier to read. */
 const MAX_ZOOM = 1.25;
+
+/** A script edited by several people at once through Yjs. */
+export interface CollabEditing {
+  readonly ydoc: Y.Doc;
+  readonly awareness: Awareness;
+  /** Who is typing here; null until the person has given a name, and then the script is read-only. */
+  readonly user: { readonly name: string; readonly color: string } | null;
+}
 
 export interface EditorUiState extends SelectionInfo {
   readonly canUndo: boolean;
@@ -64,6 +85,12 @@ export interface ScriptEditorApi {
 
 interface Props {
   initialBlocks: Block[];
+  /** Edit through Yjs instead of a local history. Fixed for the life of the editor. */
+  collab?: CollabEditing;
+  /** False shows the script but takes no edits. Default true. */
+  editable?: boolean;
+  /** The person at this keyboard changed the script (not a remote change). */
+  onLocalEdit?(): void;
   /** The cover is drawn as the first sheet of the script. */
   titlePage: TitlePage | null;
   /** Called a moment after the text stops changing, and right after `load`, with the layout. */
@@ -90,12 +117,13 @@ function markActive(state: EditorState, type: MarkType): boolean {
   return state.doc.rangeHasMark(from, to, type);
 }
 
-function uiState(state: EditorState): EditorUiState {
+function uiState(state: EditorState, collab: boolean): EditorUiState {
   const m = scriptSchema.marks;
+  const yUndo = collab ? yUndoPluginKey.getState(state)?.undoManager : undefined;
   return {
     ...selectionInfo(state),
-    canUndo: undoDepth(state) > 0,
-    canRedo: redoDepth(state) > 0,
+    canUndo: collab ? !!yUndo?.canUndo() : undoDepth(state) > 0,
+    canRedo: collab ? !!yUndo?.canRedo() : redoDepth(state) > 0,
     marks: {
       bold: !!m.bold && markActive(state, m.bold),
       italic: !!m.italic && markActive(state, m.italic),
@@ -117,8 +145,7 @@ const currentBlock = new Plugin({
   },
 });
 
-function buildState(blocks: Block[], onPlainPaste: Plugin): EditorState {
-  const doc = scriptDocumentToNode(blocksToDocument(blocks));
+function buildState(blocks: Block[], onPlainPaste: Plugin, collab?: CollabEditing): EditorState {
   const bindings: Record<string, Command> = {
     Enter: enter,
     'Mod-Enter': insertSceneAfter,
@@ -130,30 +157,48 @@ function buildState(blocks: Block[], onPlainPaste: Plugin): EditorState {
     'Mod-b': toggleBold,
     'Mod-i': toggleItalic,
     'Mod-u': toggleUnderline,
-    'Mod-z': undo,
-    'Mod-y': redo,
-    'Mod-Shift-z': redo,
+    // with other people in the script, undo only takes back what this person wrote
+    'Mod-z': collab ? undoCommand : undo,
+    'Mod-y': collab ? redoCommand : redo,
+    'Mod-Shift-z': collab ? redoCommand : redo,
     'Mod-a': selectAll,
   };
   ELEMENT_KEYS.forEach((type, i) => {
     bindings[`Alt-Shift-${i + 1}`] = setElement(type);
   });
+  const common = [keymap(bindings), currentBlock, pageDecorations, onPlainPaste];
+  if (collab) {
+    // the document comes from the room: the first sync fills it in
+    return EditorState.create({
+      schema: scriptSchema,
+      plugins: [
+        ySyncPlugin(collab.ydoc.getXmlFragment(COLLAB_TYPES.content)),
+        yCursorPlugin(collab.awareness, { awarenessStateFilter, cursorBuilder, selectionBuilder }),
+        yUndoPlugin(),
+        ...common,
+      ],
+    });
+  }
   return EditorState.create({
-    doc,
-    plugins: [history(), keymap(bindings), currentBlock, pageDecorations, onPlainPaste],
+    doc: scriptDocumentToNode(blocksToDocument(blocks)),
+    plugins: [history(), ...common],
   });
 }
 
 export const ScriptEditor = forwardRef<ScriptEditorApi, Props>(function ScriptEditor(
-  { initialBlocks, titlePage, onBlocks, onState, onOpenCover },
+  { initialBlocks, collab, editable = true, onLocalEdit, titlePage, onBlocks, onState, onOpenCover },
   ref,
 ) {
   const wrap = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   // callbacks change on every render; the view is created once and reads the latest
-  const callbacks = useRef({ onBlocks, onState, onOpenCover });
-  callbacks.current = { onBlocks, onState, onOpenCover };
+  const callbacks = useRef({ onBlocks, onState, onOpenCover, onLocalEdit });
+  callbacks.current = { onBlocks, onState, onOpenCover, onLocalEdit };
+  const editableRef = useRef(editable);
+  editableRef.current = editable;
+  const collabRef = useRef(collab);
+  const isCollab = collabRef.current !== undefined;
   const cover = useRef(titlePage);
   cover.current = titlePage;
   const layout = useRef<Page[]>([]);
@@ -221,7 +266,8 @@ export const ScriptEditor = forwardRef<ScriptEditorApi, Props>(function ScriptEd
     });
 
     const v = new EditorView(el, {
-      state: buildState(initialBlocks, plainPaste),
+      state: buildState(initialBlocks, plainPaste, collabRef.current),
+      editable: () => editableRef.current,
       attributes: {
         role: 'textbox',
         'aria-multiline': 'true',
@@ -230,22 +276,28 @@ export const ScriptEditor = forwardRef<ScriptEditorApi, Props>(function ScriptEd
         lang: 'pt-BR',
         autocapitalize: 'sentences',
       },
-      dispatchTransaction(tr) {
-        const next = v.state.apply(tr);
-        v.updateState(next);
+      // `this` is the view: the Yjs plugin dispatches while the view is still being built, before `v` exists
+      dispatchTransaction(this: EditorView, tr) {
+        const view = this;
+        // y-prosemirror schedules metadata for a view with a timer: it may arrive after unmount
+        if (view.isDestroyed) return;
+        const next = view.state.apply(tr);
+        view.updateState(next);
         if (tr.docChanged) {
           window.clearTimeout(timer);
-          timer = window.setTimeout(() => emitBlocks(v), BLOCKS_DELAY_MS);
+          timer = window.setTimeout(() => emitBlocks(view), BLOCKS_DELAY_MS);
+          // remote changes come from the room; only what this person typed counts as their edit
+          if (isCollab && !tr.getMeta(ySyncPluginKey)?.isChangeOrigin) callbacks.current.onLocalEdit?.();
         }
         if (tr.docChanged || tr.selectionSet || tr.storedMarksSet) {
-          callbacks.current.onState(uiState(next));
+          callbacks.current.onState(uiState(next, isCollab));
         }
       },
     });
     view.current = v;
     emitNow.current = () => emitBlocks(v);
     emitBlocks(v);
-    callbacks.current.onState(uiState(v.state));
+    callbacks.current.onState(uiState(v.state, isCollab));
     return () => {
       window.clearTimeout(timer);
       v.destroy();
@@ -260,19 +312,32 @@ export const ScriptEditor = forwardRef<ScriptEditorApi, Props>(function ScriptEd
     refresh.current();
   }, [titlePage]);
 
+  // read-only until the person has a name; the toolbar and the keyboard both stop
+  useEffect(() => {
+    view.current?.setProps({ editable: () => editable });
+  }, [editable]);
+
+  // who the others see: a name and a colour, or nothing while the person has no name
+  const user = collab?.user;
+  useEffect(() => {
+    const c = collabRef.current;
+    if (!c) return;
+    c.awareness.setLocalStateField('user', user ? { name: user.name, color: user.color } : null);
+  }, [user?.name, user?.color]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useImperativeHandle(
     ref,
     (): ScriptEditorApi => {
       const run = (cmd: Command) => {
         const v = view.current;
-        if (!v) return;
+        if (!v || !editableRef.current) return;
         cmd(v.state, v.dispatch.bind(v), v);
         v.focus();
       };
       return {
         load(blocks) {
           const v = view.current;
-          if (!v) return;
+          if (!v || !editableRef.current) return;
           const node = scriptDocumentToNode(blocksToDocument(blocks));
           const tr = v.state.tr.replaceWith(0, v.state.doc.content.size, node.content);
           v.dispatch(tr.setSelection(Selection.atStart(tr.doc)).scrollIntoView());
@@ -293,8 +358,8 @@ export const ScriptEditor = forwardRef<ScriptEditorApi, Props>(function ScriptEd
         },
         toggleDual: () => run(toggleDualDialogue),
         insertScene: () => run(insertSceneAfter),
-        undo: () => run(undo),
-        redo: () => run(redo),
+        undo: () => run(isCollab ? undoCommand : undo),
+        redo: () => run(isCollab ? redoCommand : redo),
         focus: () => view.current?.focus(),
       };
     },

@@ -1,5 +1,5 @@
 import { toggleMark } from 'prosemirror-commands';
-import type { Node as PmNode } from 'prosemirror-model';
+import { Fragment, type Node as PmNode } from 'prosemirror-model';
 import {
   TextSelection,
   type Command,
@@ -112,6 +112,7 @@ function runEdit(
   const sel = state.selection;
   if (!(sel instanceof TextSelection)) return false;
   const doc = state.doc;
+  if (doc.childCount === 0) return false;
   const first = topIndex(doc, sel.from);
   const last = topIndex(doc, sel.to);
   const a = Math.max(0, Math.min(first, last) - 1);
@@ -136,7 +137,7 @@ function runEdit(
   const norm = normalizeBlocks(edit.blocks);
   const at = (i: number) => Math.max(0, norm.origin.indexOf(i));
   const built = blocksToDocument(norm.blocks).content.map((j) => scriptSchema.nodeFromJSON(j));
-  const tr = state.tr.replaceWith(start, end, built);
+  const tr = minimalReplace(state, start, end, built);
   const newTbs = collectTextblocks(built, start);
   const pos = (c: Caret) => {
     const t = newTbs[at(c.index)];
@@ -145,6 +146,36 @@ function runEdit(
   tr.setSelection(TextSelection.create(tr.doc, pos(edit.anchor), pos(edit.head)));
   dispatch(tr.scrollIntoView());
   return true;
+}
+
+/**
+ * Replaces `[start, end)` with `built`, touching only the part that really differs. When
+ * several people edit the same script, a structural edit that rewrote every block around the
+ * caret would delete and recreate text that someone else is typing; this keeps the change to
+ * the blocks (or the characters) that changed. Falls back to replacing the whole window when
+ * the narrow replacement would not give exactly the intended document.
+ */
+function minimalReplace(state: EditorState, start: number, end: number, built: readonly PmNode[]): Transaction {
+  const full = state.tr.replaceWith(start, end, built);
+  const oldFrag = state.doc.content.cut(start, end);
+  const newFrag = Fragment.fromArray([...built]);
+  const diffStart = oldFrag.findDiffStart(newFrag);
+  if (diffStart === null) return state.tr; // nothing changed
+  const ends = oldFrag.findDiffEnd(newFrag);
+  if (!ends) return full;
+  let { a: endOld, b: endNew } = ends;
+  const overlap = diffStart - Math.min(endOld, endNew);
+  if (overlap > 0) {
+    endOld += overlap;
+    endNew += overlap;
+  }
+  try {
+    const slice = state.doc.copy(newFrag).slice(diffStart, endNew);
+    const narrow = state.tr.replace(start + diffStart, start + endOld, slice);
+    return narrow.doc.eq(full.doc) ? narrow : full;
+  } catch {
+    return full;
+  }
 }
 
 // ------------------------------------------------------------------ block helpers

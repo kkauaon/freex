@@ -1,0 +1,31 @@
+{
+  "name": "@freex/collab",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@freex/contracts": "workspace:*",
+    "@freex/screenplay": "workspace:*",
+    "@hocuspocus/server": "^4.7.1",
+    "lib0": "^0.2.119",
+    "prosemirror-model": "^1.25.12",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.42.7",
+    "ws": "^8.22.0",
+    "y-prosemirror": "^1.3.7",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.33",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@hocuspocus/provider": "^4.7.1",
+    "@types/ws": "^8.18.2",
+    "tsx": "^4.19.0"
+  }
+}

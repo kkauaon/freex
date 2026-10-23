@@ -4,7 +4,7 @@ Instruções para agentes e pessoas que trabalharem neste repositório.
 
 ## 1. Estado atual
 
-O repositório está na **fase 1 (fundação mínima)**. Existe um scaffold funcional (`pnpm install`, `pnpm typecheck`, `pnpm test`) com `packages/screenplay` (elementos, máquina de estados, parsers, normalização, validação `FMT*`, ênfase inline, documento canônico e import/export Fountain como biblioteca), `packages/layout` (paginador com coesão, órfãs e viúvas, `(MORE)`/`(CONT'D)`, diálogo duplo, página de título, intervalo de páginas, hash e `LAYOUT_VERSION` 2; ver `paginacao-e-quebras.md`, seção 14), `packages/contracts`, `packages/pdf` (HTML pré-paginado + Chromium via Playwright, Courier Prime embutida), `apps/api` (Fastify: `/v1/health`, `/v1/layout/paginate` e `/v1/export/pdf` síncrono, sem auth nem banco) e `apps/web` (Next.js com editor ProseMirror WYSIWYG: o texto é escrito direto nas folhas, com capa, quebras de página, número, `(MORE)`/`(CONT'D)` vindos do motor e Courier Prime; máquina de estados de elementos, ênfase, diálogo duplo, painel de problemas com salto ao trecho, rascunho local e exportação de PDF e Fountain; modo linear no celular, com a prévia numa aba; sem colaboração, autenticação nem projetos). Não existem ainda: banco, auth, colaboração, worker/PDF, ESLint, CI, `pnpm dev` validado, `lint`, `test:e2e`, `test:pdf` e `db:migrate`.
+O repositório está na **fase 1 (fundação mínima)**. Existe um scaffold funcional (`pnpm install`, `pnpm typecheck`, `pnpm test`) com `packages/screenplay` (elementos, máquina de estados, parsers, normalização, validação `FMT*`, ênfase inline, documento canônico e import/export Fountain como biblioteca), `packages/layout` (paginador com coesão, órfãs e viúvas, `(MORE)`/`(CONT'D)`, diálogo duplo, página de título, intervalo de páginas, hash e `LAYOUT_VERSION` 2; ver `paginacao-e-quebras.md`, seção 14), `packages/contracts`, `packages/pdf` (HTML pré-paginado + Chromium via Playwright, Courier Prime embutida), `apps/collab` (Hocuspocus 4 + Yjs: colaboração em tempo real por link de edição sem conta, `POST /v1/shares` e WebSocket, armazenamento em arquivos, limites de abuso; ver `colaboracao-tempo-real.md`, seção 18) e `apps/api` (Fastify: `/v1/health`, `/v1/layout/paginate` e `/v1/export/pdf` síncrono, sem auth nem banco) e `apps/web` (Next.js com editor ProseMirror WYSIWYG: o texto é escrito direto nas folhas, com capa, quebras de página, número, `(MORE)`/`(CONT'D)` vindos do motor e Courier Prime; máquina de estados de elementos, ênfase, diálogo duplo, painel de problemas com salto ao trecho, rascunho local e exportação de PDF e Fountain; modo linear no celular, com a prévia numa aba; Compartilhar cria o link de edição e a rota `/s#token` abre o roteiro compartilhado com nome obrigatório, avatares, cursores com nome, painel Pessoas e quem editou; sem autenticação nem projetos). Não existem ainda: banco, auth, comentários, histórico de versões, persistência offline da colaboração (IndexedDB), revogação e validade dos links, worker/PDF, ESLint, CI, `pnpm dev` validado, `lint`, `test:e2e`, `test:pdf` e `db:migrate`.
 
 Regras para o que ainda não existe:
 
@@ -146,7 +146,7 @@ Regras de dependência:
 - `pdf` depende de `layout` e `screenplay`.
 - `apps/web` depende de `contracts`, `ui`, `screenplay` e `layout`; não acessa banco nem auth diretamente.
 - `apps/api` depende de `contracts`, `db`, `auth`, `screenplay`, `layout` e `observability`. Atalho temporário da fundação: também depende de `pdf`, até `apps/worker` existir.
-- `apps/collab` depende de `screenplay`, `db`, `auth` e `observability`.
+- `apps/collab` depende de `screenplay`, `contracts`, `db`, `auth` e `observability` (hoje usa `screenplay` e `contracts`: o armazenamento é em arquivos, sem `db`, e não há `auth`).
 - `apps/worker` depende de `pdf`, `db` e `observability`.
 - Nenhum pacote de domínio importa código de `apps/`.
 - Nenhum componente de UI importa `db` diretamente.
@@ -163,6 +163,7 @@ Regras de dependência:
 | `pnpm lint` | Lint e formatação | Planejado |
 | `pnpm typecheck` | TypeScript estrito | Funcional |
 | `pnpm test` | Unidade e integração | Funcional (screenplay, layout, pdf, api, web) |
+| `pnpm --filter @freex/web e2e:collab` | Confere no Chromium, com duas pessoas, edição simultânea, presença, cursores, capa compartilhada, rede caindo e links inválidos; exige `pnpm --filter @freex/collab start` (com `WEB_ORIGIN`) e o web rodando | Funcional, manual; fora de `pnpm test` e sem CI |
 | `pnpm --filter @freex/web e2e` | Confere no Chromium que o editor é WYSIWYG (cada página mede uma folha, linhas na grade de 16 px); exige `pnpm --filter @freex/web build && start` rodando | Funcional, manual; ainda fora de `pnpm test` e sem CI |
 | `pnpm test:e2e` | Playwright | Planejado |
 | `pnpm test:pdf` | Golden PDFs e paridade | Planejado |

@@ -559,6 +559,12 @@ select {
   font-weight: 600;
 }
 
+@media (pointer: coarse) {
+  .status-link {
+    min-height: 44px;
+  }
+}
+
 .status-link.danger {
   color: var(--danger);
 }
@@ -1115,4 +1121,283 @@ select {
 .field textarea {
   resize: vertical;
   min-height: 84px;
+}
+
+/* ------------------------------------------------------------------ collaboration */
+
+.people {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-right: 6px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.people:hover {
+  background: var(--surface-2);
+}
+
+.conn {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+.conn.conn-connecting,
+.conn.conn-offline {
+  background: var(--warn);
+}
+
+.conn.conn-denied {
+  background: var(--danger);
+}
+
+.conn.conn-busy {
+  animation: conn-pulse 1s ease-in-out infinite;
+}
+
+@keyframes conn-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conn.conn-busy {
+    animation: none;
+  }
+}
+
+.conn-text.conn-offline,
+.conn-text.conn-connecting {
+  color: var(--warn);
+}
+
+.conn-text.conn-denied {
+  color: var(--danger);
+}
+
+.avatar {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  color: #fff;
+  font: 700 11px/1 system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.people .avatar + .avatar {
+  margin-left: -6px;
+}
+
+.avatar.more {
+  background: var(--muted);
+}
+
+/* narrow phones: the bar keeps the essentials; who is here is in the People tab */
+.menu-import {
+  display: none;
+}
+
+@media (max-width: 479px) {
+  .people .avatar {
+    display: none;
+  }
+
+  .people {
+    margin-right: 0;
+    padding: 4px;
+  }
+
+  .conn {
+    margin-right: 0;
+  }
+
+  .top-import {
+    display: none;
+  }
+
+  .menu-import {
+    display: inline-flex;
+  }
+
+  .topbar {
+    gap: 6px;
+    padding: 0 10px;
+  }
+
+  .top-actions .btn {
+    padding: 0 10px;
+  }
+
+  .brand {
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+  }
+}
+
+/* a remote label may not push the single column wider than the screen */
+.script-zoom[data-linear='true'] {
+  overflow-x: clip;
+}
+
+.panel-sub {
+  margin: 18px 0 8px;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.people-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.people-list .avatar {
+  border: 0;
+}
+
+.person-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.person-name em {
+  font-style: normal;
+  color: var(--muted);
+}
+
+.person-tabs {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+fieldset.bare {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.denied {
+  max-width: 480px;
+  margin: 15vh auto;
+  padding: 24px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+}
+
+.editor-paper > .loading {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 auto 12px;
+  width: fit-content;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+/* dialogs */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(10 10 20 / 55%);
+}
+
+.modal {
+  width: min(460px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 35%);
+}
+
+.modal h2 {
+  font-size: 1.2rem;
+}
+
+.modal-note {
+  color: var(--muted);
+}
+
+.modal-note strong {
+  color: var(--ink);
+}
+
+.modal-note.small {
+  font-size: 0.88rem;
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* the other people's carets and selections, inside the sheet */
+
+.remote-cursor {
+  position: relative;
+  margin: 0 -1px;
+  border-left: 2px solid var(--cursor, #6b7280);
+  pointer-events: none;
+  word-break: normal;
+}
+
+.remote-cursor-label {
+  position: absolute;
+  bottom: 100%;
+  left: -2px;
+  z-index: 5;
+  padding: 2px 5px;
+  border-radius: 3px 3px 3px 0;
+  background: var(--cursor, #6b7280);
+  color: #fff;
+  font: 600 11px/1 system-ui, sans-serif;
+  white-space: nowrap;
+  user-select: none;
 }

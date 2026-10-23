@@ -10,6 +10,8 @@ export interface Draft {
   readonly version: 2;
   readonly blocks: Block[];
   readonly cover: CoverForm;
+  /** When this browser last saved the draft (epoch ms); drafts from before this field have none. */
+  readonly savedAt?: number;
 }
 
 const MARK_TYPES: readonly MarkType[] = ['bold', 'italic', 'underline'];
@@ -58,8 +60,8 @@ function sanitizeCover(c: unknown): CoverForm {
   };
 }
 
-export function serializeDraft(blocks: readonly Block[], cover: CoverForm): string {
-  const draft: Draft = { version: 2, blocks: [...blocks], cover };
+export function serializeDraft(blocks: readonly Block[], cover: CoverForm, savedAt?: number): string {
+  const draft: Draft = { version: 2, blocks: [...blocks], cover, ...(savedAt !== undefined && { savedAt }) };
   return JSON.stringify(draft);
 }
 
@@ -81,5 +83,6 @@ export function parseDraft(raw: string | null): Draft | null {
     if (!ok) return null;
     blocks.push(ok);
   }
-  return { version: 2, blocks, cover: sanitizeCover(x.cover) };
+  const savedAt = typeof x.savedAt === 'number' && Number.isFinite(x.savedAt) && x.savedAt > 0 ? x.savedAt : undefined;
+  return { version: 2, blocks, cover: sanitizeCover(x.cover), ...(savedAt !== undefined && { savedAt }) };
 }

@@ -174,6 +174,22 @@ Os papéis são `owner`, `editor`, `commenter` e `viewer`, com a matriz da [SRS]
 - Um recurso inexistente e um recurso sem permissão retornam o mesmo erro para o usuário sem vínculo.
 - Testes de isolamento criam dois tenants e tentam acesso cruzado em todos os endpoints.
 
+### 5.3.1 Links de edição sem conta
+
+Enquanto não há contas (FR-COL-016), o único controle de acesso a um roteiro compartilhado é a posse do link. O risco é aceito por decisão de produto e controlado assim:
+
+| Risco | Controle |
+|---|---|
+| Adivinhar o link | Token de 256 bits (`crypto.randomBytes(32)`, 43 caracteres); a sala chama-se SHA-256 do token e o servidor só guarda esse hash |
+| Vazamento do link por log ou `Referer` | O token vai no fragmento (`/s#token`), que o navegador não envia a nenhum servidor; a página usa `referrer: no-referrer` e `noindex`; o token não entra em log nem em URL de WebSocket |
+| Qualquer pessoa com o link edita | É o efeito pretendido. O link é apresentado como uma senha; **não há revogação nem validade** (decisão aberta em `docs/README.md`) |
+| Abuso na criação | Limite de 10 links por minuto por endereço; corpo de até 3 MB, validado com Zod |
+| Abuso no WebSocket | Mensagem de até 1 MB, 100 mensagens/s por conexão, 50 conexões por sala, 60 por endereço, ping a cada 30 s, verificação de `Origin` |
+| Nome falso ou ofensivo | O nome não é autenticado. É limpo no servidor e no cliente (normalização Unicode, sem controle, sem bidi, 30 caracteres) e mostrado sempre como texto, nunca como HTML |
+| Cor da presença como vetor de CSS | Só `#rrggbb` passa; qualquer outro valor vira cinza |
+
+O nome é dado pessoal informado livremente. Ele fica no navegador (`localStorage`), na presença (efêmera) e no mapa "quem editou" dentro do próprio documento, sem prazo de retenção definido.
+
 ### 5.4 Falha fechada
 
 Se o serviço de permissões estiver indisponível:

@@ -587,3 +587,77 @@ Campos: `script_id`, `project_id`, `user_id`, `connection_id`, `duration_ms`, `e
 - O servidor não confia em papel enviado pelo cliente.
 - Nenhum texto de roteiro aparece em logs.
 - Testes de concorrência e caos passam.
+
+## 18. Implementação atual: link de edição sem conta
+
+**Status:** implementado em `apps/collab` e `apps/web` (FR-COL-016). É a primeira fatia da colaboração, feita antes de contas, banco e Redis. As seções 1 a 17 continuam sendo o alvo; esta seção diz o que existe e onde ele se afasta delas.
+
+### 18.1 Fluxo
+
+1. Na página inicial, **Compartilhar** envia o roteiro e a capa para `POST /v1/shares` (serviço de colaboração, validado com Zod) e recebe um `token` de 256 bits.
+2. O navegador abre `/s#<token>`. O token está no fragmento: não vai ao servidor web, a log nem a `Referer`.
+3. A página calcula `docId = SHA-256(token)` e conecta ao WebSocket com `name = docId` e `token` na mensagem de autenticação do Hocuspocus (nunca na URL).
+4. O servidor confere `docId == SHA-256(token)` e se a sala existe. Qualquer falha dá a mesma resposta, sem dizer o que existe.
+5. A pessoa informa um nome antes de editar. Sem nome o texto aparece, mas o editor, a barra de ferramentas e a capa ficam bloqueados.
+6. Todos editam o mesmo `Y.Doc`. O diálogo de compartilhar mostra o link e o avisa que qualquer pessoa com ele edita.
+
+### 18.2 Estrutura do `Y.Doc`
+
+| Tipo | Conteúdo |
+|---|---|
+| `XmlFragment "content"` | A árvore ProseMirror do `scriptSchema` (seção 3) |
+| `Map "cover"` | Os campos da capa (`CoverFields`); cada campo é escrito separadamente, então duas pessoas editando campos diferentes não se sobrescrevem |
+| `Map "meta"` | `schemaVersion` |
+| `Map "contributors"` | Nome → `{ at }`: quem editou e quando (no máximo 200 nomes, no máximo uma escrita a cada 5 s por pessoa) |
+
+Os nomes dos tipos vêm de `COLLAB_TYPES` em `packages/contracts`, para o servidor e o navegador usarem a mesma fonte. As quebras de página, o número e `(MORE)`/`(CONT'D)` **não** vão para o `Y.Doc`: cada navegador as calcula com o mesmo paginador, então todos veem as mesmas páginas.
+
+### 18.3 Presença
+
+A presença é `{ user: { name, color }, cursor }`. O servidor reescreve cada estado antes de repassá-lo (`beforeHandleAwareness`): mantém só um nome limpo (`sanitizeParticipantName`: NFC, sem controles nem caracteres bidi, 30 caracteres), uma cor `#rrggbb` e o cursor; qualquer outro campo é descartado. Quem não tem nome não aparece. O cliente repete a limpeza ao desenhar. A cor de cada pessoa sai de uma paleta fixa de 8 cores, todas com contraste de 4,5:1 com texto branco, escolhida pelo hash do nome. Várias abas da mesma pessoa contam como uma pessoa.
+
+### 18.3.1 Última modificação salva
+
+A barra de status mostra "Última modificação salva às 14:32" (ontem, ou a data, quando for o caso), com a data completa no `title`. No roteiro compartilhado, o horário é o do **serviço**, não o do navegador: depois de cada gravação (`afterStoreDocument`) o servidor envia a todos da sala uma mensagem *stateless* `{"type":"saved","at":<ms>}` com o `mtime` do arquivo, e a envia também a quem acaba de conectar (`connected`), para que quem chega veja o horário já gravado. O cliente valida a mensagem (`parseSavedNotice`: JSON de até 200 caracteres, `at` inteiro positivo) e ignora qualquer outra. Enquanto há alterações ainda não enviadas (`unsyncedChanges`), aparece "Salvando…". No editor local, o horário é o da gravação do rascunho neste navegador ("… (neste navegador)"), guardado em `savedAt` no rascunho e atualizado só quando o conteúdo muda de fato.
+
+### 18.4 Desfazer e estrutura
+
+- Desfazer e refazer usam o `yUndoPlugin`: cada pessoa desfaz só o que escreveu.
+- Os comandos estruturais (`Enter`, `Tab`, `Backspace`, diálogo duplo) reconstroem uma janela de blocos com o motor, mas aplicam só o trecho que mudou (`minimalReplace`): um `Enter` no fim de um bloco é uma inserção pura, e juntar dois blocos toca só esses dois. Assim não se apaga nem recria o texto que outra pessoa digita ao lado. O schema e a normalização (`normalizeBlocks`) garantem que o documento sempre seja válido, mesmo com edições concorrentes (seção 9).
+
+### 18.5 Armazenamento e limites
+
+| Item | Valor |
+|---|---|
+| Armazenamento | Um arquivo `<docId>.ydoc` por roteiro em `COLLAB_DATA_DIR` (padrão `.data/collab`), gravado em arquivo temporário e renomeado, com gravações serializadas por roteiro. Troca por PostgreSQL quando existir banco |
+| Persistência | Debounce de 2 s, no máximo 10 s (seção 6.3); ao encerrar o servidor, grava tudo que estiver pendente |
+| Mensagem | Até 1 MB (o WebSocket fecha com código 1009) |
+| Taxa | 100 mensagens/s por conexão (fecha com 4429) |
+| Sala | 50 conexões por roteiro; 60 conexões por endereço |
+| Criação | 10 links por minuto por endereço; corpo até 3 MB |
+| Origem | O `Origin` precisa estar em `WEB_ORIGIN` (CORS e WebSocket) |
+| Ping | A cada 30 s |
+
+Variáveis do serviço: `PORT` (3002), `HOST`, `COLLAB_DATA_DIR`, `WEB_ORIGIN` (lista separada por vírgulas), `MAX_CONNECTIONS_PER_DOC`, `MAX_CONNECTIONS_PER_IP`, `MESSAGES_PER_SECOND`, `CREATE_PER_MINUTE`. Variável do web: `NEXT_PUBLIC_COLLAB_URL` (padrão `http://localhost:3002`).
+
+### 18.6 Diferenças em relação às seções 1 a 17
+
+| Seção | O que diz | O que existe | Por quê |
+|---|---|---|---|
+| 4.2 | Token JWT com papel, TTL de 5 min, consultando o banco | Token opaco de 256 bits, sem expiração, hash como nome da sala | Não há conta nem banco; o link é a chave |
+| 4.3 | `documentName` no formato `script:{uuid}` | SHA-256 do token (64 hex) | O nome da sala não pode revelar o token |
+| 8 | Papéis `owner`, `editor`, `commenter`, `viewer` | Um só papel: quem tem o link edita | FR-COL-016 |
+| 5.2 | Atualizações de cursor a cada 50 ms; esmaecer após 30 s | Sem limite de frequência além de 100 mensagens/s; sem esmaecimento | A fazer |
+| 6.2 | Log de atualizações e snapshots | Só o estado completo | A fazer com o banco |
+| 7.1 | `y-indexeddb`: edições offline sobrevivem a fechar a aba | As edições feitas sem rede ficam na memória e sobem quando a conexão volta; **se a aba for fechada antes, perdem-se** | A fazer |
+| 4.1 | Redis para várias instâncias | Uma instância | A fazer |
+
+### 18.7 Decisões abertas
+
+- Prazo de validade e revogação dos links, e retenção dos roteiros compartilhados: hoje o link vale para sempre e nada é apagado (ver `docs/README.md`).
+- Quem pode apagar ou desativar um roteiro compartilhado sem haver "dono".
+- Comentários e histórico de versões em roteiros compartilhados.
+
+### 18.8 Verificação
+
+`apps/collab` tem 33 testes (15 de unidade e 18 de integração, com servidor e WebSocket reais: duas pessoas convergindo, token errado ou de outra sala, reinício do servidor, limites, origem e sanitização da presença). `apps/web/e2e/collab.mjs` (`pnpm --filter @freex/web e2e:collab`) abre dois navegadores no mesmo roteiro e confere 39 comportamentos, entre eles edição simultânea no mesmo parágrafo, bloco novo de uma pessoa aparecendo na outra, mesmas páginas para os dois, cursor com nome, capa compartilhada, texto escrito sem rede chegando depois, links inválidos e nome obrigatório.
