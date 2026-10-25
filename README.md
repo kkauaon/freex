@@ -4,7 +4,7 @@
 
 FREEX é uma plataforma web para escrever roteiros cinematográficos e de TV com formatação automática, colaboração em tempo real e exportação para PDF com fidelidade de página. O produto é inspirado na experiência de ferramentas como Celtx, mas com uma proposta própria: o padrão de formatação é tratado como contrato técnico, não como sugestão visual.
 
-> **Status:** fase 0, de documentação e decisões. Ainda não existe aplicação executável neste repositório. Os comandos de desenvolvimento serão definidos quando o scaffold for criado; nada aqui deve ser tratado como instalação pronta.
+> **Status:** fase 1 (fundação mínima). Já existe um editor WYSIWYG funcional, com paginação, colaboração por link e exportação em PDF. Ainda não há contas, banco de dados, comentários nem histórico de versões; veja a seção 3.1.
 
 ---
 
@@ -51,6 +51,47 @@ Fora do MVP:
 O FREEX é gratuito por decisão de produto. Planos pagos, assinatura e cobrança não são apenas "fora do MVP"; estão fora do escopo do produto.
 
 O escopo detalhado, com requisitos numerados e critérios de aceite, está em [`docs/01-requisitos/srs.md`](docs/01-requisitos/srs.md).
+
+### 3.1 O que já funciona
+
+- **Editor WYSIWYG** (ProseMirror): o texto é escrito direto nas folhas US Letter, com capa, quebras de página, número de página, `(MORE)` / `(CONT'D)` e Courier Prime, todos vindos do motor de layout.
+- **Elementos e ênfase:** máquina de estados de elementos (cena, ação, personagem, parêntese, diálogo, transição), negrito, itálico e sublinhado, diálogo duplo e painel de problemas com salto ao trecho.
+- **Paginação** (`@freex/layout`): coesão, órfãs e viúvas, diálogo duplo, página de título, intervalo de páginas e hash do layout.
+- **Colaboração em tempo real** (Hocuspocus + Yjs): botão Compartilhar cria um link de edição, sem conta. Nome obrigatório, avatares, cursores com nome, painel Pessoas e quem editou.
+- **PDF** (Playwright + Chromium): HTML pré-paginado, com Courier Prime embutida.
+- **Fountain:** importação e exportação.
+- **Celular:** modo linear de edição, com a prévia paginada em outra aba.
+- **Rascunho local:** a raiz `/` lista os roteiros recentes deste navegador; o rascunho fica em `/draft`.
+
+Ainda não existem: banco de dados, autenticação, projetos, comentários, histórico de versões, persistência offline da colaboração, revogação e validade dos links, worker de PDF, lint e CI.
+
+### 3.2 Como rodar localmente
+
+Requisitos: Node.js 24 e [pnpm](https://pnpm.io). Não é preciso banco, Redis nem conta.
+
+```bash
+pnpm install
+pnpm exec playwright install chromium   # só para exportar PDF
+```
+
+Suba os três serviços, cada um em um terminal:
+
+```bash
+pnpm --filter @freex/web dev      # editor, http://localhost:3000
+pnpm --filter @freex/collab dev   # colaboração, porta 3002
+pnpm --filter @freex/api dev      # PDF e paginação, porta 3001
+```
+
+Abra <http://localhost:3000>. O editor funciona sozinho; o `collab` é necessário só para Compartilhar, e a `api` só para exportar PDF. Os padrões já apontam para `localhost`, então não há variáveis a configurar. Para outras origens, use `WEB_ORIGIN` (api e collab) e `NEXT_PUBLIC_COLLAB_URL` / `NEXT_PUBLIC_API_URL` (web, fixadas no build). O `collab` guarda os roteiros compartilhados em arquivos (`COLLAB_DATA_DIR`).
+
+Verificação:
+
+```bash
+pnpm typecheck
+pnpm test
+```
+
+Os testes E2E no Chromium (`pnpm --filter @freex/web e2e` e `e2e:collab`) são manuais e exigem o web buildado e rodando; o `e2e:collab` também exige o `collab`. Para colocar em produção numa VPS, veja [`docs/06-operacoes/deploy-vps.md`](docs/06-operacoes/deploy-vps.md).
 
 ## 4. O padrão de formatação em uma tabela
 
@@ -120,8 +161,8 @@ Comece pelo índice: [`docs/README.md`](docs/README.md).
 | Fase | Entrega | Critério de saída |
 |---|---|---|
 | 0 | Documentação, decisões e referências | Este conjunto de documentos aprovado |
-| 1 | Fundação: auth, projetos, editor individual, layout e PDF | Um roteiro de 10 páginas exporta com layout fiel |
-| 2 | Colaboração em tempo real | Duas sessões editam o mesmo roteiro sem divergência |
+| 1 | Fundação: auth, projetos, editor individual, layout e PDF (em andamento: editor, layout e PDF prontos; falta auth e projetos) | Um roteiro de 10 páginas exporta com layout fiel |
+| 2 | Colaboração em tempo real (antecipada, por link; falta persistência offline) | Duas sessões editam o mesmo roteiro sem divergência |
 | 3 | Revisão: comentários, versões e opções de exportação | Fluxo completo de escrita, revisão e entrega |
 | 4 | Beta público | Requisitos não funcionais, acessibilidade e operação validados |
 
@@ -129,7 +170,7 @@ O plano detalhado, com dependências e riscos, está em [`docs/07-roadmap/roadma
 
 ## 8. Como contribuir
 
-Este repositório está em fase de documentação. Contribuições úteis agora:
+Contribuições úteis agora:
 
 - apontar divergências entre a especificação e fontes da indústria;
 - revisar os requisitos e critérios de aceite;

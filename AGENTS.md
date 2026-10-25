@@ -4,7 +4,7 @@ Instruções para agentes e pessoas que trabalharem neste repositório.
 
 ## 1. Estado atual
 
-O repositório está na **fase 1 (fundação mínima)**. Existe um scaffold funcional (`pnpm install`, `pnpm typecheck`, `pnpm test`) com `packages/screenplay` (elementos, máquina de estados, parsers, normalização, validação `FMT*`, ênfase inline, documento canônico e import/export Fountain como biblioteca), `packages/layout` (paginador com coesão, órfãs e viúvas, `(MORE)`/`(CONT'D)`, diálogo duplo, página de título, intervalo de páginas, hash e `LAYOUT_VERSION` 2; ver `paginacao-e-quebras.md`, seção 14), `packages/contracts`, `packages/pdf` (HTML pré-paginado + Chromium via Playwright, Courier Prime embutida), `apps/collab` (Hocuspocus 4 + Yjs: colaboração em tempo real por link de edição sem conta, `POST /v1/shares` e WebSocket, armazenamento em arquivos, limites de abuso, `TRUST_PROXY` atrás de proxy; roteiro de deploy em VPS em `docs/06-operacoes/deploy-vps.md` e arquivos em `deploy/`; ver `colaboracao-tempo-real.md`, seção 18) e `apps/api` (Fastify: `/v1/health`, `/v1/layout/paginate` e `/v1/export/pdf` síncrono, sem auth nem banco) e `apps/web` (Next.js com editor ProseMirror WYSIWYG: o texto é escrito direto nas folhas, com capa, quebras de página, número, `(MORE)`/`(CONT'D)` vindos do motor e Courier Prime; máquina de estados de elementos, ênfase, diálogo duplo, painel de problemas com salto ao trecho, rascunho local e exportação de PDF e Fountain; modo linear no celular, com a prévia numa aba; Compartilhar cria o link de edição e a rota `/s#token` abre o roteiro compartilhado com nome obrigatório, avatares, cursores com nome, painel Pessoas e quem editou; sem autenticação nem projetos; a raiz `/` lista os recentes deste navegador, com o rascunho em `/draft`). Não existem ainda: banco, auth, comentários, histórico de versões, persistência offline da colaboração (IndexedDB), revogação e validade dos links, worker/PDF, ESLint, CI, `pnpm dev` validado, `lint`, `test:e2e`, `test:pdf` e `db:migrate`.
+O repositório está na **fase 1 (fundação mínima)**. Existe um scaffold funcional (`pnpm install`, `pnpm typecheck`, `pnpm test`) com `packages/screenplay` (elementos, máquina de estados, parsers, normalização, validação `FMT*`, ênfase inline, documento canônico e import/export Fountain como biblioteca), `packages/layout` (paginador com coesão, órfãs e viúvas, `(MORE)`/`(CONT'D)`, diálogo duplo, página de título, intervalo de páginas, hash e `LAYOUT_VERSION` 2; ver `paginacao-e-quebras.md`, seção 14), `packages/contracts`, `packages/pdf` (HTML pré-paginado + Chromium via Playwright, Courier Prime embutida), `apps/collab` (Hocuspocus 4 + Yjs: colaboração em tempo real por link de edição sem conta, `POST /v1/shares` e WebSocket, armazenamento em arquivos, limites de abuso, `TRUST_PROXY` atrás de proxy; roteiro de deploy em VPS em `docs/06-operacoes/deploy-vps.md` e arquivos em `deploy/`; ver `colaboracao-tempo-real.md`, seção 18) e `apps/api` (Fastify: `/v1/health`, `/v1/layout/paginate` e `/v1/export/pdf` síncrono, sem auth nem banco) e `apps/web` (Next.js com editor ProseMirror WYSIWYG: o texto é escrito direto nas folhas, com capa, quebras de página, número, `(MORE)`/`(CONT'D)` vindos do motor e Courier Prime; máquina de estados de elementos, ênfase, diálogo duplo, painel de problemas com salto ao trecho, rascunho local e exportação de PDF e Fountain; modo linear no celular, com a prévia numa aba; Compartilhar cria o link de edição e a rota `/s#token` abre o roteiro compartilhado com nome obrigatório, avatares, cursores com nome, painel Pessoas e quem editou; sem autenticação nem projetos; a raiz `/` lista os recentes deste navegador, com o rascunho em `/draft`). Não existem ainda: banco, auth, comentários, histórico de versões, persistência offline da colaboração (IndexedDB), revogação e validade dos links, worker/PDF, ESLint, CI, `pnpm dev` na raiz validado, `lint`, `test:e2e`, `test:pdf` e `db:migrate`.
 
 Regras para o que ainda não existe:
 
@@ -153,13 +153,16 @@ Regras de dependência:
 
 ## 5. Comandos
 
-**Ainda não existem.** Quando o scaffold for criado, os comandos canônicos serão definidos no `package.json` da raiz e documentados aqui. A intenção é:
+Os comandos canônicos ficam nos `package.json` (raiz e apps). A tabela marca o que já funciona e o que ainda é planejado:
 
 | Comando | Finalidade | Status |
 |---|---|---|
 | `pnpm install` | Instalar dependências | Funcional |
-| `pnpm dev` | Subir web, collab e worker em modo local | Planejado |
-| `pnpm build` | Build de produção | Planejado |
+| `pnpm --filter @freex/web dev` | Editor em `http://localhost:3000` | Funcional |
+| `pnpm --filter @freex/collab dev` | Colaboração na porta 3002 | Funcional |
+| `pnpm --filter @freex/api dev` | API (paginação e PDF) na porta 3001 | Funcional (PDF exige `pnpm exec playwright install chromium`) |
+| `pnpm dev` | Subir web, collab, api e worker juntos via Turborepo | Planejado; ainda não validado, e o worker não existe |
+| `pnpm build` | Build de produção | Script na raiz; usado por `deploy/update.sh` para o web, ainda não validado para todos os pacotes |
 | `pnpm lint` | Lint e formatação | Planejado |
 | `pnpm typecheck` | TypeScript estrito | Funcional |
 | `pnpm test` | Unidade e integração | Funcional (screenplay, layout, pdf, api, web) |
@@ -169,7 +172,7 @@ Regras de dependência:
 | `pnpm test:pdf` | Golden PDFs e paridade | Planejado |
 | `pnpm db:migrate` | Migrações Drizzle | Planejado |
 
-Não apresente esses comandos como funcionais até que o scaffold exista. Se um comando mudar, atualize esta tabela e o [`README.md`](README.md).
+Não apresente como funcional o que está marcado como planejado. Se um comando mudar, atualize esta tabela e o [`README.md`](README.md).
 
 ## 6. Convenções de código
 
