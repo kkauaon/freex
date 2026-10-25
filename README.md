@@ -140,6 +140,6 @@ Leia [`AGENTS.md`](AGENTS.md) antes de alterar qualquer documento. A regra princ
 
 ## 9. Licença e marcas
 
-A licença do código ainda não foi definida. Este repositório não concede licença de uso, cópia ou distribuição além do que a lei permite.
+O código é distribuído sob a licença MIT (ver [`LICENSE`](LICENSE)). A fonte Courier Prime, embutida em `packages/pdf/fonts` e `apps/web/app/fonts`, é distribuída sob a SIL Open Font License 1.1 (ver `OFL.txt` em cada pasta).
 
 Celtx, Final Draft, WriterDuet e demais nomes citados pertencem aos seus respectivos titulares. FREEX não é afiliado, patrocinado ou endossado por essas empresas. As referências servem apenas para documentar convenções de mercado.

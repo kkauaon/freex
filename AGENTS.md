@@ -250,8 +250,7 @@ Não trate como resolvido:
 - importação FDX, Fountain ou PDF;
 - residência de dados;
 - revisões de produção e números de cena;
-- IA;
-- licença do código.
+- IA.
 
 Elas estão em [`docs/README.md`](docs/README.md) e no [`docs/07-roadmap/roadmap.md`](docs/07-roadmap/roadmap.md).
 

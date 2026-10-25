@@ -252,7 +252,7 @@ Se a fase 1 atrasar, a fase 2 não começa com layout instável. Se a fase 2 atr
 | Residência de dados | Antes da fase 4 | Infraestrutura, contratos, latência |
 | Revisões de produção | Pós-MVP | Escopo de editor e PDF |
 | IA | Pós-MVP | Produto, custo, privacidade |
-| Licença do código | Antes do beta | Distribuição e contribuição |
+| ~~Licença do código~~ | Resolvida: MIT (`LICENSE`) | Distribuição e contribuição |
 
 ## 10. Métricas de progresso
 
