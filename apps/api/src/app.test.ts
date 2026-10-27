@@ -34,7 +34,7 @@ describe('api', () => {
     const res = await app.inject({ method: 'POST', url: '/v1/layout/paginate', payload });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.layoutVersion).toBe(2);
+    expect(body.layoutVersion).toBe(3);
     expect(body.hash).toMatch(/^sha256:[0-9a-f]{64}$/);
     const lines = body.pages[0].lines;
     expect(lines[0].marks).toEqual([{ type: 'bold', from: 0, to: 3 }]);

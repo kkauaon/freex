@@ -13,14 +13,19 @@ import {
 import type { Page } from '@freex/layout';
 import { DRAFT_KEY, LEGACY_DRAFT_KEY, parseDraft, serializeDraft } from './draft';
 import {
+  DEFAULT_PROFILE,
   ELEMENT_LABEL,
   EMPTY_COVER,
+  PROFILE_HINT,
+  PROFILE_LABEL,
   SAMPLE,
   analyzeBlocks,
   exportRequest,
+  parseProfile,
   toCoverForm,
   toTitlePage,
   type CoverForm,
+  type Profile,
 } from './editor-model';
 import { parseSavedNotice, sanitizeParticipantName } from '@freex/contracts';
 import { savedLabel } from './saved';
@@ -40,7 +45,9 @@ import {
   coverFromMap,
   createShare,
   openSession,
+  profileFromMap,
   writeCover,
+  writeProfile,
   type CollabSession,
 } from './collab/session';
 import { shareLink } from './collab/token';
@@ -124,6 +131,7 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [scriptPages, setScriptPages] = useState<Page[]>([]);
   const [cover, setCoverState] = useState<CoverForm>(EMPTY_COVER);
+  const [profile, setProfileState] = useState<Profile>(DEFAULT_PROFILE);
   const [ui, setUi] = useState<EditorUiState | null>(null);
   const [view, setView] = useState<View>('write');
   const [lastSide, setLastSide] = useState<Side>('issues');
@@ -171,12 +179,13 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
       // storage can be blocked; the editor works without it
     }
     const parsed = parseFountain(legacy ?? SAMPLE);
-    const start = draft ?? { blocks: parsed.blocks, cover: toCoverForm(parsed.titlePage) };
+    const start = draft ?? { blocks: parsed.blocks, cover: toCoverForm(parsed.titlePage), profile: DEFAULT_PROFILE };
     setInitial(start.blocks);
     setBlocks(start.blocks);
     setCoverState(start.cover);
+    setProfileState(start.profile);
     setSavedAt(draft?.savedAt ?? null);
-    lastSaved.current = draft ? JSON.stringify({ blocks: draft.blocks, cover: draft.cover }) : '';
+    lastSaved.current = draft ? JSON.stringify({ blocks: draft.blocks, cover: draft.cover, profile: draft.profile }) : '';
     setLocalReady(true);
   }, [share]);
 
@@ -199,11 +208,11 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
     if (share || !localReady) return;
     const timer = window.setTimeout(() => {
       // only a real change counts as a modification
-      const content = JSON.stringify({ blocks, cover });
+      const content = JSON.stringify({ blocks, cover, profile });
       if (content === lastSaved.current) return;
       try {
         const at = Date.now();
-        window.localStorage.setItem(DRAFT_KEY, serializeDraft(blocks, cover, at));
+        window.localStorage.setItem(DRAFT_KEY, serializeDraft(blocks, cover, at, profile));
         lastSaved.current = content;
         setSavedAt(at);
       } catch {
@@ -211,7 +220,7 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
       }
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [blocks, cover, localReady, share]);
+  }, [blocks, cover, profile, localReady, share]);
 
   useEffect(() => {
     if (!notice) return;
@@ -266,10 +275,13 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
     readPeople();
 
     const readCover = () => setCoverState(coverFromMap(s.cover));
+    const readProfile = () => setProfileState(profileFromMap(s.meta));
     const readContrib = () => setContributors(readContributors(s.contributors));
     s.cover.observe(readCover);
+    s.meta.observe(readProfile);
     s.contributors.observe(readContrib);
     readCover();
+    readProfile();
     readContrib();
 
     return () => {
@@ -280,6 +292,7 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
       s.provider.off('stateless', onSaved);
       awareness?.off('change', readPeople);
       s.cover.unobserve(readCover);
+      s.meta.unobserve(readProfile);
       s.contributors.unobserve(readContrib);
       s.destroy();
       setSession(null);
@@ -322,8 +335,8 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
   const deferredPages = useDeferredValue(scriptPages);
   const deferredTitle = useDeferredValue(titlePage);
   const analysis = useMemo(
-    () => analyzeBlocks(deferredBlocks, deferredTitle, importIssues, deferredPages),
-    [deferredBlocks, deferredPages, deferredTitle, importIssues],
+    () => analyzeBlocks(deferredBlocks, deferredTitle, importIssues, deferredPages, profile),
+    [deferredBlocks, deferredPages, deferredTitle, importIssues, profile],
   );
 
   // the page view only exists for phones
@@ -352,6 +365,11 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
   function updateCover(next: CoverForm) {
     if (!share) setCoverState(next);
     else if (session && canEdit) writeCover(session.cover, next, cover);
+  }
+
+  function changeProfile(next: Profile) {
+    if (!share) setProfileState(next);
+    else if (session && canEdit) writeProfile(session.meta, next);
   }
 
   function confirmName(next: string) {
@@ -383,7 +401,7 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
     if (sharing) return;
     setSharing(true);
     try {
-      const token = await createShare(editor.current?.getBlocks() ?? blocks, cover);
+      const token = await createShare(editor.current?.getBlocks() ?? blocks, cover, undefined, profile);
       try {
         window.sessionStorage.setItem(INTRO_KEY, '1');
       } catch {
@@ -465,7 +483,7 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
   async function exportPdf() {
     exportMenu.current?.removeAttribute('open');
     // the analysis on screen can be a moment behind the keyboard: check the current text
-    const fresh = analyzeBlocks(editor.current?.getBlocks() ?? blocks, titlePage);
+    const fresh = analyzeBlocks(editor.current?.getBlocks() ?? blocks, titlePage, [], undefined, profile);
     if (fresh.blocking) {
       setNotice({ text: 'Corrija os erros em Problemas antes de exportar.', error: true, undo: false });
       openSide('issues');
@@ -871,6 +889,25 @@ export default function ScriptApp({ share }: { share?: ShareTarget }) {
           <div id="panel-issues" role="tabpanel" aria-labelledby="tab-issues" className="panel" hidden={sideView !== 'issues'}>
             <h2>Problemas</h2>
             <p className="panel-note">Erros impedem a exportação. Avisos pedem confirmação.</p>
+            <div className="profile-row">
+              <label htmlFor="profile-select">Perfil</label>
+              <select
+                id="profile-select"
+                value={profile}
+                disabled={!canEdit}
+                onChange={(e) => changeProfile(parseProfile(e.target.value))}
+                aria-describedby="profile-hint"
+              >
+                {(Object.keys(PROFILE_LABEL) as Profile[]).map((p) => (
+                  <option key={p} value={p}>
+                    {PROFILE_LABEL[p]}
+                  </option>
+                ))}
+              </select>
+              <p id="profile-hint" className="panel-note">
+                {PROFILE_HINT[profile]}
+              </p>
+            </div>
             <div style={{ marginBottom: 12 }}>
               <button type="button" className="btn small" onClick={autoFix} disabled={empty}>
                 Corrigir espaços e caixa

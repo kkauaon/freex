@@ -7,6 +7,7 @@ import {
   analyze,
   analyzeBlocks,
   exportRequest,
+  parseProfile,
   toCoverForm,
   toTitlePage,
 } from './editor-model';
@@ -123,5 +124,21 @@ describe('cover form', () => {
   it('a form is valid for the API', () => {
     const page = toTitlePage({ ...EMPTY_COVER, title: 'Casa', authors: 'Ana' });
     expect(PaginateRequest.safeParse({ blocks: [], titlePage: page }).success).toBe(true);
+  });
+});
+
+describe('profile', () => {
+  const camera = [{ type: 'action' as const, text: 'CLOSE ON: a chave.' }];
+
+  it('spec warns about camera directions and production does not', () => {
+    expect(analyzeBlocks(camera, null).items.map((i) => i.code)).toContain('FMT109');
+    expect(analyzeBlocks(camera, null, [], undefined, 'production').items.map((i) => i.code)).not.toContain('FMT109');
+  });
+
+  it('reads only known profiles', () => {
+    expect(parseProfile('production')).toBe('production');
+    expect(parseProfile('spec')).toBe('spec');
+    expect(parseProfile('other')).toBe('spec');
+    expect(parseProfile(null)).toBe('spec');
   });
 });

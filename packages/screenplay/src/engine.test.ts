@@ -26,6 +26,7 @@ import {
   suggestTransitions,
   validateBlocks,
   wrap,
+  isClosingBlock,
   type Block,
 } from './index';
 
@@ -303,6 +304,20 @@ describe('validation', () => {
     expect(codes(cam, 'production')).not.toContain('FMT109');
     expect(codes([{ type: 'shot', text: 'ANGLE ON: a porta.' }])).toContain('FMT109');
     expect(codes([{ type: 'shot', text: 'ANGLE ON: a porta.' }], 'production')).toEqual([]);
+  });
+
+  it('the closing mark is not a transition without a colon', () => {
+    const body: Block = { type: 'action', text: 'Ela sai.' };
+    expect(codes([body, { type: 'transition', text: 'FIM' }])).not.toContain('FMT119');
+    expect(codes([{ type: 'transition', text: 'FIM' }, body])).toContain('FMT119');
+  });
+
+  it('isClosingBlock only accepts the last block', () => {
+    const fim: Block = { type: 'action', text: ' the  end. ' };
+    expect(isClosingBlock([fim], 0)).toBe(true);
+    expect(isClosingBlock([fim, fim], 0)).toBe(false);
+    expect(isClosingBlock([{ type: 'dialogue', text: 'FIM' }], 0)).toBe(false);
+    expect(isClosingBlock([{ type: 'action', text: 'THE END OF DAYS' }], 0)).toBe(false);
   });
 
   it('FMT121: first mention of a speaking character must be upper case', () => {

@@ -3,6 +3,7 @@ import * as Y from 'yjs';
 import {
   COLLAB_TYPES,
   CreateShareResponse,
+  ScriptProfile,
   type BlockInput,
   type CoverFields,
 } from '@freex/contracts';
@@ -29,13 +30,14 @@ export async function createShare(
   blocks: readonly Block[],
   cover: CoverFields,
   baseUrl: string = COLLAB_URL,
+  profile?: ScriptProfile,
 ): Promise<string> {
   let res: Response;
   try {
     res = await fetch(`${baseUrl}/v1/shares`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ blocks: blocks as readonly BlockInput[], cover }),
+      body: JSON.stringify({ blocks: blocks as readonly BlockInput[], cover, ...(profile && { profile }) }),
     });
   } catch {
     throw new ShareError('network');
@@ -52,6 +54,7 @@ export interface CollabSession {
   readonly ydoc: Y.Doc;
   readonly provider: HocuspocusProvider;
   readonly cover: Y.Map<unknown>;
+  readonly meta: Y.Map<unknown>;
   readonly contributors: Y.Map<unknown>;
   destroy(): void;
 }
@@ -69,6 +72,7 @@ export function openSession(opts: { token: string; docId: string; baseUrl?: stri
     ydoc,
     provider,
     cover: ydoc.getMap<unknown>(COLLAB_TYPES.cover),
+    meta: ydoc.getMap<unknown>(COLLAB_TYPES.meta),
     contributors: ydoc.getMap<unknown>(COLLAB_TYPES.contributors),
     destroy() {
       provider.destroy();
@@ -100,4 +104,14 @@ export function writeCover(map: Y.Map<unknown>, next: CoverFields, previous: Cov
   map.doc?.transact(() => {
     for (const key of COVER_KEYS) if (next[key] !== previous[key]) map.set(key, next[key]);
   });
+}
+
+/** The shared profile; a missing or unknown value is the default one. */
+export function profileFromMap(map: Y.Map<unknown>): ScriptProfile {
+  const parsed = ScriptProfile.safeParse(map.get('profile'));
+  return parsed.success ? parsed.data : 'spec';
+}
+
+export function writeProfile(map: Y.Map<unknown>, profile: ScriptProfile): void {
+  if (map.get('profile') !== profile) map.set('profile', profile);
 }

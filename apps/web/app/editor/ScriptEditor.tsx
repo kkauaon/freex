@@ -48,6 +48,7 @@ import {
   type SelectionInfo,
 } from './commands';
 import { awarenessStateFilter, cursorBuilder, selectionBuilder } from './collabCursors';
+import { closingMark } from './closing';
 import { SHEET_W, buildPageDecorations, pageDecorations, pageDecorationsKey } from './pageBreaks';
 
 /** Below this width the editor drops the page geometry and writes in a single column. */
@@ -166,7 +167,7 @@ function buildState(blocks: Block[], onPlainPaste: Plugin, collab?: CollabEditin
   ELEMENT_KEYS.forEach((type, i) => {
     bindings[`Alt-Shift-${i + 1}`] = setElement(type);
   });
-  const common = [keymap(bindings), currentBlock, pageDecorations, onPlainPaste];
+  const common = [keymap(bindings), currentBlock, pageDecorations, closingMark, onPlainPaste];
   if (collab) {
     // the document comes from the room: the first sync fills it in
     return EditorState.create({

@@ -95,6 +95,28 @@ export function classifyTransition(text: string): TransitionInfo | null {
   return { kind, align: kind === 'fade-in' ? 'left' : 'right' };
 }
 
+const CLOSING_LINE = /^(THE END|END|FIM)\.?$/;
+
+/** `THE END`, `END` or `FIM`, with or without a final period, in any case. */
+export function isClosingText(text: string): boolean {
+  return CLOSING_LINE.test(text.trim().replace(/\s+/g, ' ').toUpperCase());
+}
+
+/**
+ * The closing mark of the script: the last block, when it is an action (or a transition typed by
+ * mistake) that only says `THE END`, `END` or `FIM`. It is centred in the text area instead of
+ * following the geometry of its element.
+ */
+export function isClosingBlock(blocks: readonly Block[], index: number): boolean {
+  const block = blocks[index];
+  return (
+    index === blocks.length - 1 &&
+    block !== undefined &&
+    (block.type === 'action' || block.type === 'transition') &&
+    isClosingText(block.text)
+  );
+}
+
 export function isShotLine(text: string): boolean {
   const t = text.trimStart();
   return SHOT_PREFIXES.some((p) => t.startsWith(p));

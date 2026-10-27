@@ -267,7 +267,7 @@ describe('hash', () => {
   });
 
   it('LAYOUT_VERSION is part of the hash input', () => {
-    expect(LAYOUT_VERSION).toBe(2);
+    expect(LAYOUT_VERSION).toBe(3);
   });
 });
 
@@ -350,4 +350,27 @@ describe('invariants on random scripts', () => {
       expect(outWords).toEqual(inWords);
     });
   }
+});
+
+describe('closing mark', () => {
+  const colOf = (blocks: Block[], text: string) =>
+    paginate(blocks)
+      .flatMap((p) => p.lines)
+      .find((l) => l.text === text)?.col;
+
+  it('centres THE END, END and FIM when they are the last block', () => {
+    expect(colOf([action(1), { type: 'action', text: 'FIM' }], 'FIM')).toBe(28);
+    expect(colOf([action(1), { type: 'action', text: 'THE END' }], 'THE END')).toBe(26);
+    expect(colOf([action(1), { type: 'action', text: 'End.' }], 'End.')).toBe(28);
+    expect(colOf([action(1), { type: 'transition', text: 'FIM' }], 'FIM')).toBe(28);
+  });
+
+  it('leaves the same text alone when it is not the last block', () => {
+    expect(colOf([{ type: 'action', text: 'FIM' }, action(1)], 'FIM')).toBe(0);
+  });
+
+  it('leaves longer text and other elements alone', () => {
+    expect(colOf([action(1), { type: 'action', text: 'FIM DE JOGO' }], 'FIM DE JOGO')).toBe(0);
+    expect(colOf([heading(), { type: 'dialogue', text: 'FIM' }], 'FIM')).toBe(10);
+  });
 });

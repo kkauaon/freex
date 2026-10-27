@@ -968,6 +968,29 @@ select {
   margin-bottom: 12px;
 }
 
+.profile-row {
+  margin-bottom: 16px;
+}
+
+.profile-row label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.profile-row select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.profile-row .panel-note {
+  margin: 6px 0 0;
+}
+
 .shortcuts {
   display: grid;
   grid-template-columns: auto 1fr;

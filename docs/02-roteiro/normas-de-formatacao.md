@@ -459,6 +459,7 @@ Porque você já sabe.
 - Transições de corte DEVEM ser alinhadas à direita, na borda de 7,5 pol.
 - `FADE IN:` é a exceção: alinhado à esquerda, em 1,5 pol, como primeiro elemento do roteiro.
 - `FADE OUT.` e `FADE TO BLACK.` são alinhados à direita.
+- `THE END`, `END` e `FIM` como último bloco do roteiro não são transições: são centralizados na área de texto (decisão de produto; ver [`elementos-e-convencoes.md`](elementos-e-convencoes.md) 11.2.1).
 - DEVERIA ser usado com moderação. Em roteiros modernos, a mudança de cena já implica corte; `CUT TO:` é opcional e muitas vezes desnecessário.
 - NÃO DEVE ser usado para decorar a página.
 
@@ -691,7 +692,7 @@ Um aviso permite exportar após confirmação.
 | `FMT106` | Parágrafo de ação com mais de 4 linhas | Dividir |
 | `FMT107` | Fala com mais de 10 linhas | Considerar dividir ou encurtar |
 | `FMT108` | "we see" / "we hear" | Reescrever |
-| `FMT109` | Direção de câmera no perfil spec | Remover ou confirmar |
+| `FMT109` | Direção de câmera no perfil spec (o perfil é uma propriedade do roteiro, escolhida no painel Problemas) | Remover ou confirmar |
 | `FMT110` | Página fora da faixa orientativa | Revisar |
 | `FMT111` | Título ou autor ausente na página de título | Preencher |
 | `FMT112` | Espaços duplos ou tabs | Auto-corrigir |

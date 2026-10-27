@@ -99,9 +99,14 @@ export const CoverFields = z.object({
 });
 export type CoverFields = z.infer<typeof CoverFields>;
 
+/** `spec` discourages camera directions; `production` allows them. It is a property of the script. */
+export const ScriptProfile = z.enum(['spec', 'production']);
+export type ScriptProfile = z.infer<typeof ScriptProfile>;
+
 export const CreateShareRequest = z.object({
   blocks: z.array(BlockInput).max(20_000),
   cover: CoverFields.optional(),
+  profile: ScriptProfile.optional(),
 });
 export type CreateShareRequest = z.infer<typeof CreateShareRequest>;
 
@@ -119,7 +124,7 @@ export const COLLAB_TYPES = {
   content: 'content',
   /** The cover: a Y.Map of the fields of `CoverFields`. */
   cover: 'cover',
-  /** `schemaVersion`. */
+  /** `schemaVersion` and `profile` (a `ScriptProfile`). */
   meta: 'meta',
   /** Who edited and when: a Y.Map from participant name to `{ at }`. */
   contributors: 'contributors',

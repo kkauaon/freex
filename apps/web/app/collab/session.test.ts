@@ -4,7 +4,9 @@ import {
   ShareError,
   coverFromMap,
   createShare,
+  profileFromMap,
   toWebSocketUrl,
+  writeProfile,
   writeCover,
 } from './session';
 
@@ -22,9 +24,28 @@ describe('toWebSocketUrl', () => {
   });
 });
 
+describe('profile', () => {
+  it('is read from the shared meta, with spec as the fallback', () => {
+    const map = new Y.Doc().getMap<unknown>('meta');
+    expect(profileFromMap(map)).toBe('spec');
+    writeProfile(map, 'production');
+    expect(profileFromMap(map)).toBe('production');
+    map.set('profile', 'anything');
+    expect(profileFromMap(map)).toBe('spec');
+  });
+});
+
 describe('createShare', () => {
   const answer = (status: number, body: unknown = { token: TOKEN }) =>
     vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
+
+  it('sends the profile of the script', async () => {
+    const fetchMock = answer(201);
+    vi.stubGlobal('fetch', fetchMock);
+    await createShare([], COVER, 'http://x.test', 'production');
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({ profile: 'production' });
+  });
 
   it('posts the script and the cover and returns the token', async () => {
     const fetchMock = answer(201);

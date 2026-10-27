@@ -1,3 +1,4 @@
+import type { ScriptProfile } from '@freex/contracts';
 import { layoutHash, layoutTitlePage, paginate, type Page } from '@freex/layout';
 import {
   checkTitlePage,
@@ -39,6 +40,25 @@ export interface Analysis {
   readonly hash: string;
 }
 
+/** `spec` discourages camera directions (FMT109); `production` allows them. Saved with the script. */
+export type Profile = ScriptProfile;
+
+export const DEFAULT_PROFILE: Profile = 'spec';
+
+export const PROFILE_LABEL: Readonly<Record<Profile, string>> = {
+  spec: 'Spec',
+  production: 'Produção',
+};
+
+export const PROFILE_HINT: Readonly<Record<Profile, string>> = {
+  spec: 'Roteiro para ler e vender: avisa sobre direção de câmera.',
+  production: 'Roteiro para filmar: direção de câmera é permitida.',
+};
+
+export function parseProfile(value: unknown): Profile {
+  return value === 'production' ? 'production' : DEFAULT_PROFILE;
+}
+
 export const ELEMENT_LABEL: Readonly<Record<ElementType, string>> = {
   'scene-heading': 'Cena',
   action: 'Ação',
@@ -59,8 +79,9 @@ export function analyzeBlocks(
   importIssues: FountainIssue[] = [],
   /** The paginated script, when the editor already computed it: it is not paginated twice. */
   scriptPages?: readonly Page[],
+  profile: Profile = DEFAULT_PROFILE,
 ): Analysis {
-  const issues = validateBlocks(blocks);
+  const issues = validateBlocks(blocks, { profile });
   const items: PanelItem[] = issues.map((issue, i) => ({
     id: `${issue.code}-${i}`,
     code: issue.code,

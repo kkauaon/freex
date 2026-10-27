@@ -607,7 +607,7 @@ Campos: `script_id`, `project_id`, `user_id`, `connection_id`, `duration_ms`, `e
 |---|---|
 | `XmlFragment "content"` | A árvore ProseMirror do `scriptSchema` (seção 3) |
 | `Map "cover"` | Os campos da capa (`CoverFields`); cada campo é escrito separadamente, então duas pessoas editando campos diferentes não se sobrescrevem |
-| `Map "meta"` | `schemaVersion` |
+| `Map "meta"` | `schemaVersion` e `profile` (`spec` ou `production`, o perfil do roteiro; ausente ou inválido vale `spec`) |
 | `Map "contributors"` | Nome → `{ at }`: quem editou e quando (no máximo 200 nomes, no máximo uma escrita a cada 5 s por pessoa) |
 
 Os nomes dos tipos vêm de `COLLAB_TYPES` em `packages/contracts`, para o servidor e o navegador usarem a mesma fonte. As quebras de página, o número e `(MORE)`/`(CONT'D)` **não** vão para o `Y.Doc`: cada navegador as calcula com o mesmo paginador, então todos veem as mesmas páginas.

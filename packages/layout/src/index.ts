@@ -8,6 +8,7 @@ import {
   PROFILE_VERSION,
   TITLE_PAGE,
   classifyTransition,
+  isClosingBlock,
   parseCharacterCue,
   wrap,
   wrapWithOffsets,
@@ -24,8 +25,9 @@ export { wrap };
  * Version of the pagination algorithm. Any change that alters where lines or pages break
  * must increment it (paginacao-e-quebras.md 9.3).
  * 2: cohesion rules, (MORE)/(CONT'D), action splitting, dual dialogue, inline marks.
+ * 3: the closing mark (THE END, END, FIM) of the script is centred.
  */
-export const LAYOUT_VERSION = 2;
+export const LAYOUT_VERSION = 3;
 
 export interface Line {
   readonly type: ElementType;
@@ -98,7 +100,7 @@ function textCells(
   block: Block,
   indent: number,
   width: number,
-  align: 'left' | 'right',
+  align: 'left' | 'right' | 'center',
   type: ElementType = block.type,
   index?: number,
 ): Cell[] {
@@ -109,7 +111,12 @@ function textCells(
     const marks = keepMarks ? lineMarks(l.source, block.marks) : [];
     return {
       type,
-      col: align === 'right' ? indent + width - l.text.length : indent,
+      col:
+        align === 'right'
+          ? indent + width - l.text.length
+          : align === 'center'
+            ? indent + Math.floor((width - l.text.length) / 2)
+            : indent,
       text: l.text,
       r,
       ...(marks.length > 0 && { marks }),
@@ -131,11 +138,12 @@ function toLine(cell: Cell, row: number): Line {
   };
 }
 
-function blockCells(block: Block, index?: number): Cell[] {
+function blockCells(block: Block, index?: number, closing = false): Cell[] {
   const box = ELEMENT_BOX[block.type];
   // FADE IN: is the one transition kept on the left margin (normas-de-formatacao.md 5.6)
-  const align =
-    block.type === 'transition'
+  const align = closing
+    ? 'center'
+    : block.type === 'transition'
       ? (classifyTransition(block.text)?.align ?? box.align)
       : box.align;
   return textCells(block, box.indent, box.width, align, block.type, index);
@@ -221,7 +229,7 @@ function buildItems(blocks: readonly Block[]): Item[] {
       i = next;
       continue;
     }
-    const cells = blockCells(b, i);
+    const cells = blockCells(b, i, isClosingBlock(blocks, i));
     items.push({
       kind:
         b.type === 'action'

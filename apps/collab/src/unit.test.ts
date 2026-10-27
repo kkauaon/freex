@@ -125,6 +125,11 @@ describe('buildShareState', () => {
     expect(ydoc.getMap(META_MAP).get('schemaVersion')).toBe(1);
   });
 
+  it('stores the profile of the script when there is one', () => {
+    expect(read(buildShareState({ blocks: [], profile: 'production' })).getMap(META_MAP).get('profile')).toBe('production');
+    expect(read(buildShareState({ blocks: [] })).getMap(META_MAP).get('profile')).toBeUndefined();
+  });
+
   it('an empty script still has one block to write in', () => {
     const ydoc = read(buildShareState({ blocks: [] }));
     const root = yXmlFragmentToProseMirrorRootNode(ydoc.getXmlFragment(CONTENT_FRAGMENT), scriptSchema);

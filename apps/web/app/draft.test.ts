@@ -13,7 +13,13 @@ const blocks: Block[] = [
 describe('draft', () => {
   it('round-trips blocks, marks, columns and the cover', () => {
     const cover = { ...EMPTY_COVER, title: 'Casa', authors: 'Ana' };
-    expect(parseDraft(serializeDraft(blocks, cover))).toEqual({ version: 2, blocks, cover });
+    expect(parseDraft(serializeDraft(blocks, cover))).toEqual({ version: 2, blocks, cover, profile: 'spec' });
+  });
+
+  it('keeps the profile, and drafts without one use the default', () => {
+    expect(parseDraft(serializeDraft([], EMPTY_COVER, undefined, 'production'))?.profile).toBe('production');
+    expect(parseDraft('{"version":2,"blocks":[]}')?.profile).toBe('spec');
+    expect(parseDraft('{"version":2,"blocks":[],"profile":"x"}')?.profile).toBe('spec');
   });
 
   it('keeps the time of the last save, and ignores one that makes no sense', () => {

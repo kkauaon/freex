@@ -34,9 +34,9 @@ describe('golden: section 13 example', () => {
   });
 
   it('has a stable hash', () => {
-    expect(LAYOUT_VERSION).toBe(2);
+    expect(LAYOUT_VERSION).toBe(3);
     expect(layoutHash(pages)).toBe(
-      'sha256:3097ec420df0e0bdc455718ac5beb95f54310c27545c4af72b08a01f8109063c',
+      'sha256:9f8d7d4fd046b5a1a3d409768e452f6baf66df85ee0a7e95c8cfb5dbb016991b',
     );
   });
 });

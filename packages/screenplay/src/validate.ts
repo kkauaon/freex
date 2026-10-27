@@ -8,7 +8,7 @@ import {
   type ElementType,
   GRID,
 } from './constants';
-import { characterKey, classifyTransition, parseSceneHeading } from './parse';
+import { characterKey, classifyTransition, isClosingBlock, parseSceneHeading } from './parse';
 import { isBlank, UPPERCASE_ELEMENTS, wrap } from './text';
 
 export type Severity = 'error' | 'warning' | 'info';
@@ -173,7 +173,12 @@ export function validateBlocks(blocks: readonly Block[], options: ValidateOption
         break;
       }
       case 'transition': {
-        if (!empty && classifyTransition(text) === null && !text.trim().endsWith(':')) {
+        if (
+          !empty &&
+          classifyTransition(text) === null &&
+          !text.trim().endsWith(':') &&
+          !isClosingBlock(blocks, i)
+        ) {
           add('FMT119', i);
         }
         if (next !== undefined && next.type !== 'scene-heading') add('FMT115', i);

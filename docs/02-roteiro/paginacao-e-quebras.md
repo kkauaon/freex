@@ -650,9 +650,11 @@ O perfil A4 usa 57 caracteres por linha e 58 linhas por página. A paginação �
 
 ## 14. Estado da implementação
 
-**Implementação:** `packages/layout/src/index.ts`, `layoutVersion` **2**. O golden da seção 13 de [`elementos-e-convencoes.md`](elementos-e-convencoes.md) está em `packages/layout/src/golden.test.ts`; os cenários 1–15 e 20 da seção 10 e invariantes sobre roteiros pseudoaleatórios estão em `packages/layout/src/paginate.test.ts`.
+**Implementação:** `packages/layout/src/index.ts`, `layoutVersion` **3**. O golden da seção 13 de [`elementos-e-convencoes.md`](elementos-e-convencoes.md) está em `packages/layout/src/golden.test.ts`; os cenários 1–15 e 20 da seção 10 e invariantes sobre roteiros pseudoaleatórios estão em `packages/layout/src/paginate.test.ts`.
 
 A versão 1 (paginador mínimo, sem regras de coesão) não produzia `(MORE)`/`(CONT'D)`. A passagem para a versão 2 não altera nenhuma constante de formatação; por isso o `profileVersion` continua 1.
+
+A versão 3 centraliza o encerramento do roteiro (`THE END`, `END` ou `FIM` como último bloco; ver [`elementos-e-convencoes.md`](elementos-e-convencoes.md) 11.2.1). Nenhuma constante muda, então o `profileVersion` continua 1; roteiros sem encerramento têm as mesmas linhas, e só o hash muda, porque a versão entra nele.
 
 **Modelo de entrada.** O motor recebe a lista plana de blocos do `packages/screenplay` (`type`, `text`, `marks?`, `column?`), não a estrutura da seção 2.2. Uma fala é um `character` seguido de `parenthetical`/`dialogue`. Duas falas consecutivas cujos cues têm `column: 'left'` e `column: 'right'` formam um diálogo duplo. Em `marks`, os deslocamentos são índices do texto do bloco; cada linha de saída recebe as marcas com deslocamentos relativos a ela.
 

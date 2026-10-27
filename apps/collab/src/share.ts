@@ -16,7 +16,9 @@ export function buildShareState(req: CreateShareRequest): Uint8Array {
   const ydoc = prosemirrorJSONToYDoc(scriptSchema, { type: 'doc', content: doc.content }, CONTENT_FRAGMENT);
   const cover = ydoc.getMap<string>(COVER_MAP);
   for (const [key, value] of Object.entries(req.cover ?? {})) cover.set(key, value);
-  ydoc.getMap<number>(META_MAP).set('schemaVersion', SCHEMA_VERSION);
+  const meta = ydoc.getMap<number | string>(META_MAP);
+  meta.set('schemaVersion', SCHEMA_VERSION);
+  if (req.profile) meta.set('profile', req.profile);
   const state = Y.encodeStateAsUpdate(ydoc);
   ydoc.destroy();
   return state;
