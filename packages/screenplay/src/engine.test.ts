@@ -312,6 +312,12 @@ describe('validation', () => {
     expect(codes([{ type: 'transition', text: 'FIM' }, body])).toContain('FMT119');
   });
 
+  it('a closing scene heading raises no scene heading warnings', () => {
+    const body: Block = { type: 'action', text: 'Ela sai.' };
+    expect(codes([body, { type: 'scene-heading', text: 'FIM' }])).toEqual([]);
+    expect(codes([{ type: 'scene-heading', text: 'FIM' }, body])).toContain('FMT103');
+  });
+
   it('isClosingBlock only accepts the last block', () => {
     const fim: Block = { type: 'action', text: ' the  end. ' };
     expect(isClosingBlock([fim], 0)).toBe(true);

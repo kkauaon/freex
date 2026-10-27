@@ -363,6 +363,8 @@ describe('closing mark', () => {
     expect(colOf([action(1), { type: 'action', text: 'THE END' }], 'THE END')).toBe(26);
     expect(colOf([action(1), { type: 'action', text: 'End.' }], 'End.')).toBe(28);
     expect(colOf([action(1), { type: 'transition', text: 'FIM' }], 'FIM')).toBe(28);
+    // Enter after FADE OUT. creates a scene heading
+    expect(colOf([action(1), { type: 'scene-heading', text: 'FIM' }], 'FIM')).toBe(28);
   });
 
   it('leaves the same text alone when it is not the last block', () => {

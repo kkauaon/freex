@@ -129,6 +129,7 @@ export function validateBlocks(blocks: readonly Block[], options: ValidateOption
           add('FMT006', i);
           break;
         }
+        if (isClosingBlock(blocks, i)) break;
         const h = parseSceneHeading(text);
         if (text.trim().length > GRID.columns) add('FMT101', i);
         if (h.prefix === null) add('FMT103', i);

@@ -687,7 +687,7 @@ Escolha uma convenção por roteiro.
 
 ### 11.2.1 Encerramento `THE END`, `END` ou `FIM`
 
-**Decisão de produto (FREEX).** Quando o último bloco do roteiro é uma ação cujo texto é só `THE END`, `END` ou `FIM` (qualquer caixa, ponto final opcional), o motor o **centraliza** na área de texto de 60 colunas, em vez de alinhá-lo à esquerda como a ação. Não é um elemento novo e não é uma transição: continua sendo uma ação, e o texto digitado é mantido como está. O mesmo texto fora da última posição segue a geometria da ação. Um bloco de transição com esse texto, no fim, também é centralizado e não recebe `FMT119`.
+**Decisão de produto (FREEX).** Quando o último bloco do roteiro é uma ação (ou uma transição ou um cabeçalho de cena, porque o `Enter` depois de `FADE OUT.` cria um cabeçalho de cena) cujo texto é só `THE END`, `END` ou `FIM` (qualquer caixa, ponto final opcional), o motor o **centraliza** na área de texto de 60 colunas, em vez de alinhá-lo à esquerda como a ação. Não é um elemento novo e não é uma transição: continua sendo uma ação, e o texto digitado é mantido como está. O mesmo texto fora da última posição segue a geometria da ação. Nesses casos o bloco não recebe `FMT119` nem `FMT102`/`FMT103`.
 
 Não há fonte em [`referencias.md`](referencias.md) para essa regra: é uma escolha do produto, pedida pelo autor do projeto.
 

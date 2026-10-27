@@ -103,16 +103,17 @@ export function isClosingText(text: string): boolean {
 }
 
 /**
- * The closing mark of the script: the last block, when it is an action (or a transition typed by
- * mistake) that only says `THE END`, `END` or `FIM`. It is centred in the text area instead of
- * following the geometry of its element.
+ * The closing mark of the script: the last block, when it only says `THE END`, `END` or `FIM`.
+ * It is centred in the text area instead of following the geometry of its element. An action is
+ * the right element, but `Enter` after a transition creates a scene heading and a transition is
+ * what comes before, so those two are accepted too.
  */
 export function isClosingBlock(blocks: readonly Block[], index: number): boolean {
   const block = blocks[index];
   return (
     index === blocks.length - 1 &&
     block !== undefined &&
-    (block.type === 'action' || block.type === 'transition') &&
+    (block.type === 'action' || block.type === 'transition' || block.type === 'scene-heading') &&
     isClosingText(block.text)
   );
 }

@@ -3,6 +3,8 @@ import { Decoration, DecorationSet } from 'prosemirror-view';
 import type { Node as PmNode } from 'prosemirror-model';
 import { ELEMENT_BOX, isClosingText } from '@freex/screenplay';
 
+const CLOSING_NODES: ReadonlySet<string> = new Set(['action', 'transition', 'scene_heading']);
+
 /** Column of the closing mark inside the text area; the same rule as `packages/layout`. */
 export function closingIndent(text: string): number {
   const { width } = ELEMENT_BOX.action;
@@ -15,7 +17,7 @@ export function closingIndent(text: string): number {
  */
 export function closingDecoration(doc: PmNode): DecorationSet {
   const last = doc.lastChild;
-  if (!last || (last.type.name !== 'action' && last.type.name !== 'transition')) {
+  if (!last || !CLOSING_NODES.has(last.type.name)) {
     return DecorationSet.empty;
   }
   if (!isClosingText(last.textContent)) return DecorationSet.empty;

@@ -18,7 +18,11 @@ describe('closing mark', () => {
   it('does nothing when it is not the last block or not a closing text', () => {
     expect(decorations([{ type: 'action', text: 'FIM' }, { type: 'action', text: 'Ela sai.' }])).toHaveLength(0);
     expect(decorations([{ type: 'action', text: 'FIM DE JOGO' }])).toHaveLength(0);
-    expect(decorations([{ type: 'scene-heading', text: 'FIM' }])).toHaveLength(0);
+    expect(decorations([{ type: 'dialogue', text: 'FIM' }])).toHaveLength(0);
+  });
+
+  it('also centres a scene heading, which is what Enter creates after FADE OUT.', () => {
+    expect(decorations([{ type: 'action', text: 'Ela sai.' }, { type: 'scene-heading', text: 'FIM' }])).toHaveLength(1);
   });
 
   it('uses the same column as the layout engine', () => {

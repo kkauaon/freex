@@ -229,10 +229,13 @@ function buildItems(blocks: readonly Block[]): Item[] {
       i = next;
       continue;
     }
-    const cells = blockCells(b, i, isClosingBlock(blocks, i));
+    const closing = isClosingBlock(blocks, i);
+    const cells = blockCells(b, i, closing);
     items.push({
       kind:
-        b.type === 'action'
+        closing
+          ? 'whole'
+          : b.type === 'action'
           ? 'action'
           : b.type === 'scene-heading'
             ? 'scene'
